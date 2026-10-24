@@ -17,13 +17,27 @@ import { Users } from './collections/Users'
 import { Venues } from './collections/Venues'
 
 /**
+ * The database address, forgiving the usual extras picked up when copying it from
+ * Neon's Connect dialog: a leading `psql`, wrapping quotes, or a `DATABASE_URL=` prefix.
+ */
+function databaseUrl(): string {
+  return (process.env.DATABASE_URL || '')
+    .trim()
+    .replace(/^DATABASE_URL\s*=\s*/i, '')
+    .replace(/^psql\s+/i, '')
+    .trim()
+    .replace(/^(['"])(.*)\1$/, '$2')
+    .trim()
+}
+
+/**
  * Signs admin sessions. PAYLOAD_SECRET is the proper setting. Without it, the secret
  * is derived from the database address, which is just as private (whoever holds that
  * address already has the whole database), so a deployment works with DATABASE_URL alone.
  */
 function payloadSecret(): string {
   if (process.env.PAYLOAD_SECRET) return process.env.PAYLOAD_SECRET
-  const database = process.env.DATABASE_URL
+  const database = databaseUrl()
   if (!database) return '' // Payload refuses to start without a secret, which is what we want
   return createHash('sha256').update(`gezelim/payload-secret/${database}`).digest('hex')
 }
@@ -85,7 +99,7 @@ export default buildConfig({
   },
   db: postgresAdapter({
     pool: {
-      connectionString: process.env.DATABASE_URL || '',
+      connectionString: databaseUrl(),
       max: process.env.VERCEL ? 3 : 10,
     },
     // The schema only changes through migrations (src/migrations), in development too.

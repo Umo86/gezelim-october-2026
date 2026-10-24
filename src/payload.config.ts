@@ -17,17 +17,13 @@ import { Users } from './collections/Users'
 import { Venues } from './collections/Venues'
 
 /**
- * The database address, forgiving the usual extras picked up when copying it from
- * Neon's Connect dialog: a leading `psql`, wrapping quotes, or a `DATABASE_URL=` prefix.
+ * The database address. Picks the postgresql:// address out of whatever was pasted
+ * into DATABASE_URL, so the usual copy-paste extras from Neon's Connect dialog
+ * (a `psql` command, quotes, `DATABASE_URL=`, other .env lines) don't break the build.
  */
 function databaseUrl(): string {
-  return (process.env.DATABASE_URL || '')
-    .trim()
-    .replace(/^DATABASE_URL\s*=\s*/i, '')
-    .replace(/^psql\s+/i, '')
-    .trim()
-    .replace(/^(['"])(.*)\1$/, '$2')
-    .trim()
+  const raw = process.env.DATABASE_URL || ''
+  return raw.match(/postgres(?:ql)?:\/\/[^\s'"`]+/)?.[0] ?? raw.trim()
 }
 
 /**

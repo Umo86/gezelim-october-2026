@@ -19,7 +19,7 @@
     "samples": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed/seed.ts from-env",
     "migrate": "cross-env NODE_OPTIONS=--no-deprecation payload migrate",
     "migrate:create": "cross-env NODE_OPTIONS=--no-deprecation payload migrate:create",
-    "ci": "npm run migrate && npm run samples && npm run build",
+    "ci": "node scripts/check-env.mjs && npm run migrate && npm run samples && npm run build",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

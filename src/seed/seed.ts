@@ -2,6 +2,8 @@
  * Sample data.
  *   npm run seed         replace all sample records with a fresh set (dates relative to today)
  *   npm run seed:clear   remove every sample record and leave real content alone
+ *   npm run seed -- --no-images   skip the sample photos (all events get generated posters),
+ *                        e.g. for a preview whose photo storage isn't set up yet
  * Optional: SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD create a first admin if none exists.
  */
 import config from '@payload-config'
@@ -83,7 +85,8 @@ async function seed(payload: Payload) {
   }
 
   const posterIds = new Map<string, number>()
-  for (const name of new Set(events.map((e) => e.poster).filter(Boolean) as string[])) {
+  const posters = process.argv.includes('--no-images') ? [] : (events.map((e) => e.poster).filter(Boolean) as string[])
+  for (const name of new Set(posters)) {
     try {
       const data = await renderPoster(name)
       const media = await payload.create({

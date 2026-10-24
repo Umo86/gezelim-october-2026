@@ -88,10 +88,12 @@ Adding a city or category means editing `src/config/places.ts` or `src/config/ca
 
 1. **Database:** create a Neon project in `aws-eu-west-2` (London), or add Neon from the Vercel Marketplace, and set `DATABASE_URL`.
 2. **Photos:** create an R2 bucket (private), an R2 API token with read and write access to it, and set the four `R2_*` variables. Photos are served through `/img/…` with a one-year cache, so the bucket never needs to be public.
-3. **Vercel:** import the repository. `vercel.json` sets the build command (`npm run ci` = migrations, then the build) and the London region. Set `PAYLOAD_SECRET`, `NEXT_PUBLIC_SITE_URL` and the rest from `.env.example`.
-4. **Domain:** add `gezelim.co` to the project and redirect `gezelim.co.uk` to it.
-5. **First admin:** open `/admin` and create the first account.
+3. **Vercel:** import the repository. `vercel.json` sets the build command (`npm run ci` = migrations, then the build) and the London region. Set `PAYLOAD_SECRET` and the rest from `.env.example`.
+4. **First admin:** open `/admin` and create the first account (the first account becomes the admin, so do this before sharing the address).
+5. **Domain and launch:** add `gezelim.co` to the project, redirect `gezelim.co.uk` to it, then set `NEXT_PUBLIC_SITE_URL=https://gezelim.co` for Production and redeploy. Until that variable is set, every deployment (including `*.vercel.app`) tells search engines to stay away, so the temporary address never competes with the real one.
 6. **Search:** set `INDEXNOW_KEY` and the verification tags, then submit the sitemap in Google Search Console and Bing Webmaster Tools.
+
+To fill a fresh database with the sample events: `npm run seed` (or `npm run seed -- --no-images` before photo storage is set up). `npm run seed:clear` removes them again.
 
 Admin photo uploads go through a Vercel function, so files over about 4 MB need resizing first; the public form already resizes in the browser.
 

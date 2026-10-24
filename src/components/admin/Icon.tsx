@@ -1,0 +1,10 @@
+/* Shown in the admin navigation. */
+export function Icon() {
+  return (
+    <svg viewBox="0 0 512 512" role="img" aria-label="Gezelim" style={{ width: 28, height: 28 }} xmlns="http://www.w3.org/2000/svg">
+      <rect width="512" height="512" rx="104" fill="#1F3FBF" />
+      <path d="M256.0 56.0 L292.7 167.3 L397.4 114.6 L344.7 219.3 L456.0 256.0 L344.7 292.7 L397.4 397.4 L292.7 344.7 L256.0 456.0 L219.3 344.7 L114.6 397.4 L167.3 292.7 L56.0 256.0 L167.3 219.3 L114.6 114.6 L219.3 167.3 Z" fill="#F7F4EE" />
+      <circle cx="256" cy="256" r="46" fill="#FF5A3C" />
+    </svg>
+  )
+}

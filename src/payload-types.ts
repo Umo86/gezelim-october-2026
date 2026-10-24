@@ -12,54 +12,7 @@
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "supportedTimezones".
  */
-export type SupportedTimezones =
-  | 'Pacific/Midway'
-  | 'Pacific/Niue'
-  | 'Pacific/Honolulu'
-  | 'Pacific/Rarotonga'
-  | 'America/Anchorage'
-  | 'Pacific/Gambier'
-  | 'America/Los_Angeles'
-  | 'America/Tijuana'
-  | 'America/Denver'
-  | 'America/Phoenix'
-  | 'America/Chicago'
-  | 'America/Guatemala'
-  | 'America/New_York'
-  | 'America/Bogota'
-  | 'America/Caracas'
-  | 'America/Santiago'
-  | 'America/Buenos_Aires'
-  | 'America/Sao_Paulo'
-  | 'Atlantic/South_Georgia'
-  | 'Atlantic/Azores'
-  | 'Atlantic/Cape_Verde'
-  | 'Europe/London'
-  | 'Europe/Berlin'
-  | 'Africa/Lagos'
-  | 'Europe/Athens'
-  | 'Africa/Cairo'
-  | 'Europe/Moscow'
-  | 'Asia/Riyadh'
-  | 'Asia/Dubai'
-  | 'Asia/Baku'
-  | 'Asia/Karachi'
-  | 'Asia/Tashkent'
-  | 'Asia/Calcutta'
-  | 'Asia/Dhaka'
-  | 'Asia/Almaty'
-  | 'Asia/Jakarta'
-  | 'Asia/Bangkok'
-  | 'Asia/Shanghai'
-  | 'Asia/Singapore'
-  | 'Asia/Tokyo'
-  | 'Asia/Seoul'
-  | 'Australia/Brisbane'
-  | 'Australia/Sydney'
-  | 'Pacific/Guam'
-  | 'Pacific/Noumea'
-  | 'Pacific/Auckland'
-  | 'Pacific/Fiji';
+export type SupportedTimezones = 'Europe/London';
 
 export interface Config {
   auth: {
@@ -67,8 +20,11 @@ export interface Config {
   };
   blocks: {};
   collections: {
-    users: User;
+    events: Event;
+    venues: Venue;
+    organisers: Organiser;
     media: Media;
+    users: User;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -76,20 +32,23 @@ export interface Config {
   };
   collectionsJoins: {};
   collectionsSelect: {
-    users: UsersSelect<false> | UsersSelect<true>;
+    events: EventsSelect<false> | EventsSelect<true>;
+    venues: VenuesSelect<false> | VenuesSelect<true>;
+    organisers: OrganisersSelect<false> | OrganisersSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
+    users: UsersSelect<false> | UsersSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
     'payload-migrations': PayloadMigrationsSelect<false> | PayloadMigrationsSelect<true>;
   };
   db: {
-    defaultIDType: string;
+    defaultIDType: number;
   };
-  fallbackLocale: null;
+  fallbackLocale: ('false' | 'none' | 'null') | false | null | ('tr' | 'en') | ('tr' | 'en')[];
   globals: {};
   globalsSelect: {};
-  locale: null;
+  locale: 'tr' | 'en';
   widgets: {
     collections: CollectionsWidget;
   };
@@ -118,11 +77,312 @@ export interface UserAuthOperations {
   };
 }
 /**
+ * Events from the public form wait here as drafts. Check them, edit if needed, then Publish.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "events".
+ */
+export interface Event {
+  id: number;
+  title: string;
+  /**
+   * Shown on cards and in Google results. One or two sentences.
+   */
+  summary?: string | null;
+  description?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  /**
+   * Add each name separately: Google matches artist searches to the event by these names.
+   */
+  performers?:
+    | {
+        name: string;
+        kind?: ('person' | 'group') | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Portrait (4:5) posters look best on cards. Without an image the site draws a patterned poster.
+   */
+  image?: (number | null) | Media;
+  category:
+    | 'concerts'
+    | 'nightlife'
+    | 'comedy'
+    | 'theatre'
+    | 'festivals'
+    | 'family'
+    | 'community'
+    | 'ramadan-eid'
+    | 'arts-culture'
+    | 'film'
+    | 'food-drink'
+    | 'sport'
+    | 'business'
+    | 'talks-workshops';
+  eventLanguage?: ('tr' | 'en' | 'both' | 'none') | null;
+  ageLimit?: ('all' | '16' | '18') | null;
+  startsAt: string;
+  startsAt_tz: SupportedTimezones;
+  endsAt?: string | null;
+  endsAt_tz?: SupportedTimezones;
+  /**
+   * The city page that lists this event. For small towns, pick the nearest city.
+   */
+  city:
+    | 'london'
+    | 'birmingham'
+    | 'manchester'
+    | 'leeds'
+    | 'liverpool'
+    | 'glasgow'
+    | 'edinburgh'
+    | 'bristol'
+    | 'cardiff'
+    | 'leicester'
+    | 'sheffield'
+    | 'nottingham'
+    | 'coventry'
+    | 'luton'
+    | 'milton-keynes'
+    | 'northampton'
+    | 'reading'
+    | 'oxford'
+    | 'cambridge'
+    | 'brighton'
+    | 'southampton'
+    | 'portsmouth'
+    | 'bournemouth'
+    | 'newcastle'
+    | 'bradford'
+    | 'stoke-on-trent'
+    | 'peterborough'
+    | 'norwich'
+    | 'swansea'
+    | 'aberdeen'
+    | 'dundee'
+    | 'belfast';
+  venue?: (number | null) | Venue;
+  isFree?: boolean | null;
+  priceFrom?: number | null;
+  priceTo?: number | null;
+  ticketUrl?: string | null;
+  soldOut?: boolean | null;
+  submission?: {
+    contactName?: string | null;
+    contactEmail?: string | null;
+    contactPhone?: string | null;
+    organiserLink?: string | null;
+    writtenIn?: ('tr' | 'en') | null;
+    submittedAt?: string | null;
+    imageRightsConfirmed?: boolean | null;
+    notes?: string | null;
+  };
+  /**
+   * Leave empty to use the event name, city and date.
+   */
+  metaTitle?: string | null;
+  /**
+   * Leave empty to use the short description.
+   */
+  metaDescription?: string | null;
+  /**
+   * Fills itself from the name and date. Changing it after publishing breaks old links.
+   */
+  slug?: string | null;
+  organiser?: (number | null) | Organiser;
+  eventStatus?: ('scheduled' | 'cancelled' | 'postponed' | 'rescheduled') | null;
+  /**
+   * Shown under "Featured" on home pages.
+   */
+  featured?: boolean | null;
+  /**
+   * Made-up record used to show the design. Shown with a "Sample" label on the site.
+   */
+  isSample?: boolean | null;
+  source?: ('staff' | 'form') | null;
+  activeUntil?: string | null;
+  previousSlugs?: string[] | null;
+  updatedAt: string;
+  createdAt: string;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "media".
+ */
+export interface Media {
+  id: number;
+  /**
+   * Briefly describe what the image shows, for screen readers and Google.
+   */
+  alt?: string | null;
+  credit?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  url?: string | null;
+  thumbnailURL?: string | null;
+  filename?: string | null;
+  mimeType?: string | null;
+  filesize?: number | null;
+  width?: number | null;
+  height?: number | null;
+  focalX?: number | null;
+  focalY?: number | null;
+  sizes?: {
+    thumb?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+    card?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+    poster?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+    og?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+  };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "venues".
+ */
+export interface Venue {
+  id: number;
+  name: string;
+  /**
+   * Fills itself if left empty. Changing it after publishing breaks old links.
+   */
+  slug?: string | null;
+  /**
+   * The nearest listed city.
+   */
+  city:
+    | 'london'
+    | 'birmingham'
+    | 'manchester'
+    | 'leeds'
+    | 'liverpool'
+    | 'glasgow'
+    | 'edinburgh'
+    | 'bristol'
+    | 'cardiff'
+    | 'leicester'
+    | 'sheffield'
+    | 'nottingham'
+    | 'coventry'
+    | 'luton'
+    | 'milton-keynes'
+    | 'northampton'
+    | 'reading'
+    | 'oxford'
+    | 'cambridge'
+    | 'brighton'
+    | 'southampton'
+    | 'portsmouth'
+    | 'bournemouth'
+    | 'newcastle'
+    | 'bradford'
+    | 'stoke-on-trent'
+    | 'peterborough'
+    | 'norwich'
+    | 'swansea'
+    | 'aberdeen'
+    | 'dundee'
+    | 'belfast';
+  address?: string | null;
+  town?: string | null;
+  postcode?: string | null;
+  /**
+   * Filled from the postcode.
+   */
+  lat?: number | null;
+  lng?: number | null;
+  website?: string | null;
+  /**
+   * Made-up record used to show the design. Shown with a "Sample" label on the site.
+   */
+  isSample?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "organisers".
+ */
+export interface Organiser {
+  id: number;
+  name: string;
+  /**
+   * Fills itself if left empty. Changing it after publishing breaks old links.
+   */
+  slug?: string | null;
+  bio?: string | null;
+  logo?: (number | null) | Media;
+  website?: string | null;
+  /**
+   * @kullaniciadi
+   */
+  instagram?: string | null;
+  /**
+   * Tick once you’ve confirmed who this organiser is.
+   */
+  verified?: boolean | null;
+  /**
+   * Made-up record used to show the design. Shown with a "Sample" label on the site.
+   */
+  isSample?: boolean | null;
+  contactName?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "users".
  */
 export interface User {
-  id: string;
+  id: number;
+  name?: string | null;
+  /**
+   * Editors edit and publish events. Admins can also manage the team.
+   */
+  role: 'admin' | 'editor';
   updatedAt: string;
   createdAt: string;
   email: string;
@@ -145,29 +405,10 @@ export interface User {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "media".
- */
-export interface Media {
-  id: string;
-  alt: string;
-  updatedAt: string;
-  createdAt: string;
-  url?: string | null;
-  thumbnailURL?: string | null;
-  filename?: string | null;
-  mimeType?: string | null;
-  filesize?: number | null;
-  width?: number | null;
-  height?: number | null;
-  focalX?: number | null;
-  focalY?: number | null;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
-  id: string;
+  id: number;
   key: string;
   data:
     | {
@@ -184,20 +425,32 @@ export interface PayloadKv {
  * via the `definition` "payload-locked-documents".
  */
 export interface PayloadLockedDocument {
-  id: string;
+  id: number;
   document?:
     | ({
-        relationTo: 'users';
-        value: string | User;
+        relationTo: 'events';
+        value: number | Event;
+      } | null)
+    | ({
+        relationTo: 'venues';
+        value: number | Venue;
+      } | null)
+    | ({
+        relationTo: 'organisers';
+        value: number | Organiser;
       } | null)
     | ({
         relationTo: 'media';
-        value: string | Media;
+        value: number | Media;
+      } | null)
+    | ({
+        relationTo: 'users';
+        value: number | User;
       } | null);
   globalSlug?: string | null;
   user: {
     relationTo: 'users';
-    value: string | User;
+    value: number | User;
   };
   updatedAt: string;
   createdAt: string;
@@ -207,10 +460,10 @@ export interface PayloadLockedDocument {
  * via the `definition` "payload-preferences".
  */
 export interface PayloadPreference {
-  id: string;
+  id: number;
   user: {
     relationTo: 'users';
-    value: string | User;
+    value: number | User;
   };
   key?: string | null;
   value?:
@@ -230,7 +483,7 @@ export interface PayloadPreference {
  * via the `definition` "payload-migrations".
  */
 export interface PayloadMigration {
-  id: string;
+  id: number;
   name?: string | null;
   batch?: number | null;
   updatedAt: string;
@@ -238,9 +491,167 @@ export interface PayloadMigration {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "events_select".
+ */
+export interface EventsSelect<T extends boolean = true> {
+  title?: T;
+  summary?: T;
+  description?: T;
+  performers?:
+    | T
+    | {
+        name?: T;
+        kind?: T;
+        id?: T;
+      };
+  image?: T;
+  category?: T;
+  eventLanguage?: T;
+  ageLimit?: T;
+  startsAt?: T;
+  startsAt_tz?: T;
+  endsAt?: T;
+  endsAt_tz?: T;
+  city?: T;
+  venue?: T;
+  isFree?: T;
+  priceFrom?: T;
+  priceTo?: T;
+  ticketUrl?: T;
+  soldOut?: T;
+  submission?:
+    | T
+    | {
+        contactName?: T;
+        contactEmail?: T;
+        contactPhone?: T;
+        organiserLink?: T;
+        writtenIn?: T;
+        submittedAt?: T;
+        imageRightsConfirmed?: T;
+        notes?: T;
+      };
+  metaTitle?: T;
+  metaDescription?: T;
+  slug?: T;
+  organiser?: T;
+  eventStatus?: T;
+  featured?: T;
+  isSample?: T;
+  source?: T;
+  activeUntil?: T;
+  previousSlugs?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "venues_select".
+ */
+export interface VenuesSelect<T extends boolean = true> {
+  name?: T;
+  slug?: T;
+  city?: T;
+  address?: T;
+  town?: T;
+  postcode?: T;
+  lat?: T;
+  lng?: T;
+  website?: T;
+  isSample?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "organisers_select".
+ */
+export interface OrganisersSelect<T extends boolean = true> {
+  name?: T;
+  slug?: T;
+  bio?: T;
+  logo?: T;
+  website?: T;
+  instagram?: T;
+  verified?: T;
+  isSample?: T;
+  contactName?: T;
+  email?: T;
+  phone?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "media_select".
+ */
+export interface MediaSelect<T extends boolean = true> {
+  alt?: T;
+  credit?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  url?: T;
+  thumbnailURL?: T;
+  filename?: T;
+  mimeType?: T;
+  filesize?: T;
+  width?: T;
+  height?: T;
+  focalX?: T;
+  focalY?: T;
+  sizes?:
+    | T
+    | {
+        thumb?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+        card?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+        poster?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+        og?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+      };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "users_select".
  */
 export interface UsersSelect<T extends boolean = true> {
+  name?: T;
+  role?: T;
   updatedAt?: T;
   createdAt?: T;
   email?: T;
@@ -258,24 +669,6 @@ export interface UsersSelect<T extends boolean = true> {
         createdAt?: T;
         expiresAt?: T;
       };
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "media_select".
- */
-export interface MediaSelect<T extends boolean = true> {
-  alt?: T;
-  updatedAt?: T;
-  createdAt?: T;
-  url?: T;
-  thumbnailURL?: T;
-  filename?: T;
-  mimeType?: T;
-  filesize?: T;
-  width?: T;
-  height?: T;
-  focalX?: T;
-  focalY?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

@@ -1,67 +1,117 @@
-# Payload Blank Template
+# Gezelim
 
-This template comes configured with the bare minimum to get started on anything you need.
+Turkish events across the UK, in Turkish and English. Organisers add events for free through a public form; the Gezelim team checks each one in the admin panel and publishes it.
 
-## Quick start
+- **Site:** Next.js 16 (App Router) with static, cached pages
+- **Admin and content:** Payload CMS 3, in the same app, at `/admin` (Turkish or English interface)
+- **Database:** Postgres (Neon in production)
+- **Photos:** Cloudflare R2, served from the site's own domain at `/img/…`
+- **Hosting:** Vercel (functions in London, `lhr1`)
 
-This template can be deployed directly from our Cloud hosting and it will setup MongoDB and cloud S3 object storage for media.
+## Addresses
 
-## Quick Start - local setup
+Every page is `/<place>/<lang>/…`. The place is `uk` (all events) or a city (`london`, `manchester`, … 32 cities in `src/config/places.ts`). URL words are translated:
 
-To spin up this template locally, follow these steps:
+| Page | Turkish | English |
+| --- | --- | --- |
+| Home for a place | `/london/tr` | `/london/en` |
+| All events | `/london/tr/etkinlikler` | `/london/en/events` |
+| Category | `/london/tr/etkinlikler/konserler` | `/london/en/events/concerts` |
+| Date page | `/london/tr/etkinlikler/bu-hafta-sonu` | `/london/en/events/this-weekend` |
+| Event | `/london/tr/etkinlik/<slug>` | `/london/en/event/<slug>` |
+| Venue | `/london/tr/mekan/<slug>` | `/london/en/places/<slug>` |
+| Organiser | `/uk/tr/organizatorler/<slug>` | `/uk/en/organisers/<slug>` |
+| Add an event | `/uk/tr/etkinlik-ekle` | `/uk/en/add-event` |
 
-### Clone
+Date pages exist for today, tomorrow, this weekend, this week and next week. `/` and `/london` send readers to their saved language (Turkish by default). There are no redirects by IP or browser language, because Google crawls from the US. Wrong-language words (`/london/tr/events`) redirect permanently to the right one. The rules live in `src/proxy.ts`.
 
-After you click the `Deploy` button above, you'll want to have standalone copy of this repo on your machine. If you've already cloned this repo, skip to [Development](#development).
+## Search engines
 
-### Development
+Built for Google, Bing and the rest:
 
-1. First [clone the repo](#clone) if you have not done so already
-2. `cd my-project && cp .env.example .env` to copy the example environment variables. You'll need to add the `MONGODB_URL` from your Cloud project to your `.env` if you want to use S3 storage and the MongoDB database that was created for you.
+- **Fast pages:** pages are pre-rendered and cached; the database is only read when content changes (Payload hooks call `revalidateTag`) or once an hour so "this weekend" stays current.
+- **Tags:** every page has its own title, description, canonical, and `tr`/`en`/`x-default` hreflang tags.
+- **Structured data:** Event schema (with the right subtype, London-time dates, location, offers, organiser, line-up and status), BreadcrumbList, Place for venues, Organization and WebSite.
+- **Sitemap:** `/sitemap.xml` lists every live page in both languages with hreflang and event images. Sample events, empty pages and untranslated copies are left out.
+- **IndexNow:** pings Bing, Yandex, Seznam and Naver on every publish, edit or removal. Set `INDEXNOW_KEY`.
+- **Verification tags:** Google, Bing and Yandex, set through environment variables.
+- **Noindex rules:** empty city, category and date pages; sample content; untranslated copies (these point their canonical at the original); events six months after they end.
+- **Stable links:** renaming an event keeps its old address working with a 301; an event moved to another city redirects too.
+- **Previews off the index:** `robots.txt` blocks everything except on the production deployment.
 
-3. `pnpm install && pnpm dev` to install dependencies and start the dev server
-4. open `http://localhost:3000` to open the app in your browser
+After launch: add the site to [Google Search Console](https://search.google.com/search-console) and [Bing Webmaster Tools](https://www.bing.com/webmasters) and submit `https://gezelim.co/sitemap.xml` in both. Bing also feeds DuckDuckGo, Yahoo, Ecosia and ChatGPT search.
 
-That's it! Changes made in `./src` will be reflected in your app. Follow the on-screen instructions to login and create your first admin user. Then check out [Production](#production) once you're ready to build and serve your app, and [Deployment](#deployment) when you're ready to go live.
+## Content model (Payload collections)
 
-#### Docker (Optional)
+- **Events:** title, short and full description, line-up, poster, category, event language, age limit, start and end (London time), city, venue, price or free, ticket link, sold out, status (going ahead, cancelled, postponed, new date), featured, SEO overrides. Drafts are on: anything from the public form arrives as a draft.
+- **Venues:** name, city, address, postcode (map position filled from postcodes.io), website.
+- **Organisers:** name, bio, logo, links, verified flag, and private contact details only staff can read.
+- **Images:** uploads get a content-hash file name and pre-made sizes (4:5 card crops around the focal point, the full poster, and a 1200×630 share image that letterboxes the poster on brand blue).
+- **Team:** admins and editors. The first account created on `/admin` becomes an admin.
 
-If you prefer to use Docker for local development instead of a local MongoDB instance, the provided docker-compose.yml file can be used.
+Text fields are stored per language (Turkish and English). If an event has only one language, the other page shows it with a note and points search engines at the original.
 
-To do so, follow these steps:
+## Moderation
 
-- Modify the `MONGODB_URL` in your `.env` file to `mongodb://127.0.0.1/<dbname>`
-- Modify the `docker-compose.yml` file's `MONGODB_URL` to match the above `<dbname>`
-- Run `docker-compose up` to start the database, optionally pass `-d` to run in the background.
+1. An organiser fills in `/uk/tr/etkinlik-ekle`. The browser shrinks large posters before upload; spam is stopped by a hidden field, a minimum time on the page and Cloudflare Turnstile (when keys are set).
+2. The event, its venue and its organiser are created (reusing ones that match). The event is a draft, so nothing is public yet. If `ADMIN_NOTIFY_EMAIL` and `RESEND_API_KEY` are set, the team gets an email.
+3. The admin dashboard shows how many events are waiting, with a link to them. Open one, use **Preview** to see the real page, fix anything, add the English version, then **Publish**. The site updates on the next visit.
 
-## How it works
+## Running it locally
 
-The Payload config is tailored specifically to the needs of most websites. It is pre-configured in the following ways:
+Needs Node 22.23+ (or 24.22+) and Postgres.
 
-### Collections
+```bash
+cp .env.example .env          # set DATABASE_URL and PAYLOAD_SECRET
+npm install
+npm run migrate               # create the tables
+npm run seed                  # optional: 31 sample events across 10 cities
+npm run dev                   # http://localhost:3000 → /uk/tr, admin at /admin
+```
 
-See the [Collections](https://payloadcms.com/docs/configuration/collections) docs for details on how to extend this functionality.
+`npm run seed:clear` removes every sample record. Sample events carry an "Örnek / Sample" label, are kept out of the sitemap and structured data, and are marked noindex.
 
-- #### Users (Authentication)
+Other scripts: `npm run build`, `npm run start`, `npm test` (URL, slug and date rules), `npm run typecheck`, `npm run lint`.
 
-  Users are auth-enabled collections that have access to the admin panel.
+## Changing the data model
 
-  For additional help, see the official [Auth Example](https://github.com/payloadcms/payload/tree/3.x/examples/auth) or the [Authentication](https://payloadcms.com/docs/authentication/overview#authentication-overview) docs.
+The schema only changes through migrations (Payload `push` is off, in development too):
 
-- #### Media
+```bash
+npm run migrate:create -- describe-your-change   # after editing a collection
+npm run migrate
+```
 
-  This is the uploads enabled collection. It features pre-configured sizes, focal point and manual resizing to help you manage your pictures.
+Adding a city or category means editing `src/config/places.ts` or `src/config/categories.ts`, then creating a migration (both are database enums).
 
-### Docker
+## Deploying (Vercel + Neon + R2)
 
-Alternatively, you can use [Docker](https://www.docker.com) to spin up this template locally. To do so, follow these steps:
+1. **Database:** create a Neon project in `aws-eu-west-2` (London), or add Neon from the Vercel Marketplace, and set `DATABASE_URL`.
+2. **Photos:** create an R2 bucket (private), an R2 API token with read and write access to it, and set the four `R2_*` variables. Photos are served through `/img/…` with a one-year cache, so the bucket never needs to be public.
+3. **Vercel:** import the repository. `vercel.json` sets the build command (`npm run ci` = migrations, then the build) and the London region. Set `PAYLOAD_SECRET`, `NEXT_PUBLIC_SITE_URL` and the rest from `.env.example`.
+4. **Domain:** add `gezelim.co` to the project and redirect `gezelim.co.uk` to it.
+5. **First admin:** open `/admin` and create the first account.
+6. **Search:** set `INDEXNOW_KEY` and the verification tags, then submit the sitemap in Google Search Console and Bing Webmaster Tools.
 
-1. Follow [steps 1 and 2 from above](#development), the docker-compose file will automatically use the `.env` file in your project root
-1. Next run `docker-compose up`
-1. Follow [steps 4 and 5 from above](#development) to login and create your first admin user
+Admin photo uploads go through a Vercel function, so files over about 4 MB need resizing first; the public form already resizes in the browser.
 
-That's it! The Docker instance will help you get up and running quickly while also standardizing the development environment across your teams.
+## Where things are
 
-## Questions
+```
+src/
+  app/(frontend)/[place]/[lang]/   public pages (home, events, event, venue, organiser, add-event, about, privacy, preview)
+  app/(payload)/                   Payload admin and REST API
+  app/img/[...path]/               photo delivery from R2 (or ./media locally)
+  app/sitemap.ts, robots.ts        search engine files
+  collections/                     Events, Venues, Organisers, Media, Users
+  components/site/                 page components (EventArt draws the çini posters)
+  config/                          cities and categories
+  i18n/                            URL words, interface text in both languages
+  lib/                             queries (cached), dates (London time), SEO, IndexNow
+  proxy.ts                         URL language rules
+  seed/                            sample data
+```
 
-If you have any issues or questions, reach out to us on [Discord](https://discord.com/invite/payload) or start a [GitHub discussion](https://github.com/payloadcms/payload/discussions).
+## Design
+
+Iznik tile palette: çini blue `#1F3FBF`, gece navy `#0F1A33`, ayran `#F7F4EE`, mercan `#FF5A3C`, fıstık `#8DB36B`, taş `#E9E3D8`. One typeface, Archivo: condensed 800 for headlines, regular width for text. Events without a photo get a generated poster from tile motifs (star, çintemani, tulip, rosette, kilim); the category picks the motif and the event picks the colours.

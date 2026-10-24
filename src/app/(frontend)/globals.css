@@ -1,0 +1,266 @@
+@import 'tailwindcss';
+
+/*
+ * Gezelim tokens. The palette is Iznik tile: cobalt (çini), tomato red (mercan),
+ * green (fıstık) on a white ground (ayran), with night blue (gece) for text.
+ */
+@theme {
+  --color-cini: #1f3fbf;
+  --color-cini-deep: #182f8f;
+  --color-cini-soft: #e2e7fb;
+  --color-gece: #0f1a33;
+  --color-ayran: #f7f4ee;
+  --color-tas: #e9e3d8;
+  --color-tas-deep: #d3c9b8;
+  --color-mercan: #ff5a3c;
+  --color-fistik: #8db36b;
+  --color-fistik-deep: #3f6b22;
+  --color-muted: #4a5468;
+
+  --font-sans: 'Archivo Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --breakpoint-xs: 26rem;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background: var(--color-ayran);
+    color: var(--color-gece);
+    font-family: var(--font-sans);
+    font-size: 1.0625rem;
+    line-height: 1.55;
+    font-stretch: 100%;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--color-mercan);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  ::selection {
+    background: var(--color-cini);
+    color: var(--color-ayran);
+  }
+
+  a {
+    text-underline-offset: 0.18em;
+    text-decoration-thickness: 0.08em;
+  }
+
+  input,
+  select,
+  textarea,
+  button {
+    font: inherit;
+  }
+}
+
+@layer components {
+  /* Headlines: Archivo at poster weight and width. */
+  .display {
+    font-weight: 800;
+    font-stretch: 72%;
+    line-height: 0.94;
+    letter-spacing: -0.012em;
+    text-wrap: balance;
+  }
+
+  /* Labels and small UI text: semi-condensed so they sit tight. */
+  .ui {
+    font-stretch: 86%;
+    font-weight: 600;
+    letter-spacing: 0.005em;
+  }
+
+  .wrap {
+    width: 100%;
+    max-width: 1320px;
+    margin-inline: auto;
+    padding-inline: 1rem;
+  }
+  @media (min-width: 48rem) {
+    .wrap {
+      padding-inline: 1.5rem;
+    }
+  }
+
+  .skip-link {
+    position: absolute;
+    left: 1rem;
+    top: -4rem;
+    z-index: 100;
+    background: var(--color-gece);
+    color: var(--color-ayran);
+    padding: 0.6rem 1rem;
+    border-radius: 0 0 6px 6px;
+  }
+  .skip-link:focus {
+    top: 0;
+  }
+
+  /* Horizontal rails: native scroll on touch, grid on desktop. */
+  .rail {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(15rem, 72%);
+    gap: 1rem;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    padding-bottom: 0.25rem;
+  }
+  .rail::-webkit-scrollbar {
+    display: none;
+  }
+  .rail > * {
+    scroll-snap-align: start;
+  }
+  @media (min-width: 40rem) {
+    .rail {
+      grid-auto-columns: minmax(15rem, 42%);
+    }
+  }
+  @media (min-width: 64rem) {
+    .rail {
+      grid-auto-flow: row;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      overflow: visible;
+      gap: 1.5rem;
+    }
+  }
+
+  /* Poster artwork: the generated çini pattern with the title panel. */
+  .art {
+    position: relative;
+    overflow: hidden;
+    container-type: inline-size;
+    isolation: isolate;
+  }
+  .art-svg,
+  .art-svg > svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+  .art-panel {
+    position: absolute;
+    left: 7%;
+    right: 7%;
+    bottom: 7%;
+    padding: 6% 7% 7%;
+    font-weight: 800;
+    font-stretch: 68%;
+    line-height: 0.95;
+    letter-spacing: -0.01em;
+    font-size: clamp(0.95rem, 10.5cqw, 3rem);
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    hyphens: auto;
+  }
+
+  /* Rich text from the CMS */
+  .prose-gz {
+    max-width: 68ch;
+    font-size: 1.0625rem;
+    line-height: 1.65;
+  }
+  .prose-gz > * + * {
+    margin-top: 1em;
+  }
+  .prose-gz h2,
+  .prose-gz h3 {
+    font-weight: 750;
+    font-stretch: 80%;
+    line-height: 1.15;
+    margin-top: 1.6em;
+  }
+  .prose-gz h2 {
+    font-size: 1.5rem;
+  }
+  .prose-gz h3 {
+    font-size: 1.25rem;
+  }
+  .prose-gz a {
+    color: var(--color-cini);
+    text-decoration: underline;
+  }
+  .prose-gz ul {
+    list-style: disc;
+    padding-left: 1.25em;
+  }
+  .prose-gz ol {
+    list-style: decimal;
+    padding-left: 1.25em;
+  }
+  .prose-gz blockquote {
+    border-left: 4px solid var(--color-cini);
+    padding-left: 1em;
+    font-style: italic;
+  }
+
+  /* Form controls */
+  .field-label {
+    display: block;
+    font-weight: 650;
+    font-stretch: 90%;
+    margin-bottom: 0.35rem;
+  }
+  .field-help {
+    display: block;
+    font-size: 0.875rem;
+    color: var(--color-muted);
+    margin-top: 0.35rem;
+  }
+  .field-error {
+    display: block;
+    font-size: 0.875rem;
+    color: #b42318;
+    font-weight: 600;
+    margin-top: 0.35rem;
+  }
+  .control {
+    width: 100%;
+    background: #fff;
+    border: 1.5px solid var(--color-tas-deep);
+    border-radius: 6px;
+    padding: 0.65rem 0.8rem;
+    color: var(--color-gece);
+    min-height: 2.9rem;
+  }
+  .control:hover {
+    border-color: var(--color-muted);
+  }
+  .control:focus {
+    outline: none;
+    border-color: var(--color-cini);
+    box-shadow: 0 0 0 3px var(--color-cini-soft);
+  }
+  .control[aria-invalid='true'] {
+    border-color: #b42318;
+  }
+  textarea.control {
+    min-height: 7rem;
+    resize: vertical;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -29,15 +29,15 @@ Date pages exist for today, tomorrow, this weekend, this week and next week. `/`
 
 Built for Google, Bing and the rest:
 
-- **Fast pages:** pages are pre-rendered and cached; the database is only read when content changes (Payload hooks call `revalidateTag`) or once an hour so "this weekend" stays current.
+- **Fast pages:** pages are pre-rendered and cached; the database is only read when content changes (Payload hooks call `revalidateTag`) or once an hour so "this weekend" stays current. A page more than two hours old is rebuilt before it's served (`expireTime`), and a browser that gets a copy from an earlier day fetches the fresh one.
 - **Tags:** every page has its own title, description, canonical, and `tr`/`en`/`x-default` hreflang tags.
 - **Structured data:** Event schema (with the right subtype, London-time dates, location, offers, organiser, line-up and status), BreadcrumbList, Place for venues, Organization and WebSite.
-- **Sitemap:** `/sitemap.xml` lists every live page in both languages with hreflang and event images. Sample events, empty pages and untranslated copies are left out.
+- **Sitemap:** `/sitemap.xml` lists every live page in both languages with hreflang and event images. Sample events, thin pages and untranslated copies are left out, by the same rules as the noindex tags (`src/lib/indexing.ts`).
 - **IndexNow:** pings Bing, Yandex, Seznam and Naver on every publish, edit or removal. Set `INDEXNOW_KEY`.
 - **Verification tags:** Google, Bing and Yandex, set through environment variables.
-- **Noindex rules:** empty city, category and date pages; sample content; untranslated copies (these point their canonical at the original); events six months after they end.
+- **Noindex rules:** city pages with no real (non-sample) events; category and date pages with fewer than three, or the same events as the list above them; sample content; events six months after they end. Untranslated copies point their canonical at the original instead.
 - **Stable links:** renaming an event keeps its old address working with a 301; an event moved to another city redirects too.
-- **Previews off the index:** `robots.txt` blocks everything except on the production deployment.
+- **Previews off the index:** `robots.txt` blocks everything except on the production deployment once `NEXT_PUBLIC_SITE_URL` is set; after launch, other addresses (`*.vercel.app`) redirect to it.
 
 After launch: add the site to [Google Search Console](https://search.google.com/search-console) and [Bing Webmaster Tools](https://www.bing.com/webmasters) and submit `https://gezelim.co/sitemap.xml` in both. Bing also feeds DuckDuckGo, Yahoo, Ecosia and ChatGPT search.
 
@@ -53,8 +53,8 @@ Text fields are stored per language (Turkish and English). If an event has only 
 
 ## Moderation
 
-1. An organiser fills in `/uk/tr/etkinlik-ekle`. The browser shrinks large posters before upload; spam is stopped by a hidden field, a minimum time on the page and Cloudflare Turnstile (when keys are set).
-2. The event, its venue and its organiser are created (reusing ones that match). The event is a draft, so nothing is public yet. If `ADMIN_NOTIFY_EMAIL` and `RESEND_API_KEY` are set, the team gets an email.
+1. An organiser fills in `/uk/tr/etkinlik-ekle`. The browser shrinks large posters before upload; spam is stopped by a hidden field, a minimum time on the page, Cloudflare Turnstile (when keys are set) and limits of 5 submissions per hour per sender (a hash of the IP address) and 60 per hour in total. The poster field is hidden on Vercel until R2 is set up.
+2. The event is saved as a draft. Its organiser and venue are reused when they match (same email; same name at the same postcode), otherwise created; new ones and the poster are marked **Waiting for review** and stay hidden from visitors and the public API until the event is published. An email that matches a *verified* organiser is never linked automatically: the submission's team notes say so, and staff link it after checking. If `ADMIN_NOTIFY_EMAIL` and `RESEND_API_KEY` are set, the team gets an email.
 3. The admin dashboard shows how many events are waiting, with a link to them. Open one, use **Preview** to see the real page, fix anything, add the English version, then **Publish**. The site updates on the next visit.
 
 ## Running it locally
@@ -89,8 +89,8 @@ Adding a city or category means editing `src/config/places.ts` or `src/config/ca
 1. **Database:** create a Neon project in `aws-eu-west-2` (London), or add Neon from the Vercel Marketplace, and set `DATABASE_URL`.
 2. **Photos:** create an R2 bucket (private), an R2 API token with read and write access to it, and set the four `R2_*` variables. Photos are served through `/img/…` with a one-year cache, so the bucket never needs to be public.
 3. **Vercel:** import the repository. `vercel.json` sets the build command (`npm run ci` = migrations, sample events, then the build) and the London region. `DATABASE_URL` is the only required setting (`PAYLOAD_SECRET` is derived from it unless you set one); add the rest from `.env.example` as each service is set up.
-4. **First admin:** open `/admin` and create the first account (the first account becomes the admin, so do this before sharing the address).
-5. **Domain and launch:** add `gezelim.co` to the project, redirect `gezelim.co.uk` to it, then set `NEXT_PUBLIC_SITE_URL=https://gezelim.co` for Production and redeploy. Until that variable is set, every deployment (including `*.vercel.app`) tells search engines to stay away, so the temporary address never competes with the real one.
+4. **First admin:** open `/admin` and create the first account (the first account becomes the admin, so do this straight away). Setting `FIRST_ADMIN_EMAIL` means only that address can create it.
+5. **Domain and launch:** add `gezelim.co` to the project, redirect `gezelim.co.uk` to it, then set `NEXT_PUBLIC_SITE_URL=https://gezelim.co` for Production and redeploy. Until that variable is set, every deployment (including `*.vercel.app`) tells search engines to stay away, so the temporary address never competes with the real one. Once it's set, pages on any other address 308-redirect to it, and the launch build removes the sample events. Before launch also set up Turnstile (`NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`) and, ideally, a Vercel Firewall rate limit on `/admin` logins.
 6. **Search:** set `INDEXNOW_KEY` and the verification tags, then submit the sitemap in Google Search Console and Bing Webmaster Tools.
 
 To fill a fresh database with the sample events: `npm run seed` (or `npm run seed -- no-images` before photo storage is set up). `npm run seed:clear` removes them again. On Vercel, the build fills an empty database with them before launch (or whenever `SAMPLE_EVENTS=on`); `SAMPLE_EVENTS=off` removes them on the next deployment.

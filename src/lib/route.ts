@@ -54,3 +54,4 @@ export function whenHeading(place: Place, lang: Lang, when: When): string {
   if (lang === 'tr') return `${WHEN_TR[when]} ${place.inTr}ki Türk etkinlikleri`
   return `Turkish events ${place.inEn} ${WHEN_EN[when]}`
 }
+

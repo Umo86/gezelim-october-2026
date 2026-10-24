@@ -1,6 +1,6 @@
 import type { CollectionBeforeChangeHook, CollectionConfig } from 'payload'
-import { anyone, isStaff } from '@/access'
-import { cityOptions, isSampleField, slugField } from '@/fields/options'
+import { approvedOrStaff, isStaff } from '@/access'
+import { cityOptions, isSampleField, pendingField, slugField } from '@/fields/options'
 import { revalidateAfterChange, revalidateAfterDelete } from '@/hooks/revalidate'
 import { uniqueSlug } from '@/lib/uniqueSlug'
 
@@ -49,7 +49,7 @@ export const Venues: CollectionConfig = {
     listSearchableFields: ['name', 'postcode', 'town'],
   },
   access: {
-    read: anyone,
+    read: approvedOrStaff,
     create: isStaff,
     update: isStaff,
     delete: isStaff,
@@ -69,7 +69,7 @@ export const Venues: CollectionConfig = {
   },
   fields: [
     { name: 'name', type: 'text', required: true, label: { tr: 'Mekan adı', en: 'Venue name' } },
-    slugField('name'),
+    slugField('name', { fallback: 'mekan' }),
     {
       name: 'city',
       type: 'select',
@@ -100,5 +100,6 @@ export const Venues: CollectionConfig = {
     },
     { name: 'website', type: 'text', label: { tr: 'Web sitesi', en: 'Website' } },
     isSampleField,
+    pendingField,
   ],
 }

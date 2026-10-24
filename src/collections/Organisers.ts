@@ -1,6 +1,6 @@
 import type { CollectionConfig } from 'payload'
-import { anyone, isStaff, staffOnlyField } from '@/access'
-import { isSampleField, slugField } from '@/fields/options'
+import { approvedOrStaff, isStaff, staffOnlyField } from '@/access'
+import { isSampleField, pendingField, slugField } from '@/fields/options'
 import { revalidateAfterChange, revalidateAfterDelete } from '@/hooks/revalidate'
 import { uniqueSlug } from '@/lib/uniqueSlug'
 
@@ -17,7 +17,7 @@ export const Organisers: CollectionConfig = {
     listSearchableFields: ['name', 'email'],
   },
   access: {
-    read: anyone,
+    read: approvedOrStaff,
     create: isStaff,
     update: isStaff,
     delete: isStaff,
@@ -41,7 +41,7 @@ export const Organisers: CollectionConfig = {
       required: true,
       label: { tr: 'Ad', en: 'Name' },
     },
-    slugField('name'),
+    slugField('name', { fallback: 'organizator' }),
     {
       name: 'bio',
       type: 'textarea',
@@ -76,6 +76,7 @@ export const Organisers: CollectionConfig = {
       },
     },
     isSampleField,
+    pendingField,
     {
       type: 'collapsible',
       label: { tr: 'İletişim (sadece ekip görür)', en: 'Contact (staff only)' },

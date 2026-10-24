@@ -96,7 +96,10 @@ export default buildConfig({
   db: postgresAdapter({
     pool: {
       connectionString: databaseUrl(),
-      max: process.env.VERCEL ? 3 : 10,
+      // Payload keeps one connection for itself; Neon's pooler makes the rest cheap.
+      max: process.env.VERCEL ? 8 : 10,
+      // Fail a query after 10s of waiting for a free connection instead of hanging.
+      connectionTimeoutMillis: 10_000,
     },
     // The schema only changes through migrations (src/migrations), in development too.
     push: false,
@@ -113,6 +116,9 @@ export default buildConfig({
   plugins: [
     s3Storage({
       enabled: r2Enabled,
+      // Same media columns with or without R2, so switching photo storage on later
+      // doesn't need a new migration.
+      alwaysInsertFields: true,
       collections: {
         media: { prefix: 'media' },
       },

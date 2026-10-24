@@ -6,6 +6,7 @@ import { EventCard } from '@/components/site/EventCard'
 import { mapsUrl } from '@/components/site/EventDetail'
 import { ExternalIcon, PinIcon } from '@/components/site/icons'
 import { JsonLd } from '@/components/site/JsonLd'
+import { RefreshIfStale } from '@/components/site/RefreshIfStale'
 import { getCity, getPlace } from '@/config/places'
 import { isLang, type Lang } from '@/i18n/config'
 import { getDictionary } from '@/i18n/dictionary'
@@ -14,7 +15,7 @@ import { formatDateFull } from '@/lib/dates'
 import { toListEvent } from '@/lib/events'
 import { getVenue } from '@/lib/queries'
 import { pageMetadata } from '@/lib/seo'
-import { absoluteUrl } from '@/lib/site'
+import { absoluteUrl, webUrl } from '@/lib/site'
 
 export const dynamic = 'force-static'
 export const revalidate = 3600
@@ -60,9 +61,14 @@ export default async function VenuePage({ params }: { params: Params }) {
   const events = upcoming.map((e) => toListEvent(e, lang))
   const earlier = past.map((e) => toListEvent(e, lang))
   const url = absoluteUrl(paths.venue(venue.city, lang, venue.slug || ''))
+  const website = webUrl(venue.website)
+  // Rendered once per cache period; the browser compares this with its own clock.
+  // eslint-disable-next-line react-hooks/purity
+  const builtAt = Date.now()
 
   return (
     <div className="wrap pt-8 md:pt-12">
+      <RefreshIfStale builtAt={builtAt} />
       <Breadcrumbs
         label={t.nav.breadcrumb}
         items={[
@@ -84,8 +90,8 @@ export default async function VenuePage({ params }: { params: Params }) {
             {t.event.directions}
           </a>
         ) : null}
-        {venue.website ? (
-          <a href={venue.website} target="_blank" rel="noopener noreferrer" className="ui inline-flex items-center gap-1.5 text-cini hover:underline">
+        {website ? (
+          <a href={website} target="_blank" rel="noopener noreferrer" className="ui inline-flex items-center gap-1.5 text-cini hover:underline">
             {t.venue.website}
             <ExternalIcon width={16} height={16} />
           </a>
@@ -134,15 +140,17 @@ export default async function VenuePage({ params }: { params: Params }) {
             url,
             address: {
               '@type': 'PostalAddress',
-              ...(venue.address ? { streetAddress: venue.address } : {}),
-              addressLocality: venue.town || city?.name.en || cityName,
+              ...(venue.address || venue.town
+                ? { streetAddress: [venue.address, venue.town].filter(Boolean).join(', ') }
+                : {}),
+              addressLocality: city?.name.en || cityName,
               ...(venue.postcode ? { postalCode: venue.postcode } : {}),
               addressCountry: 'GB',
             },
             ...(venue.lat != null && venue.lng != null
               ? { geo: { '@type': 'GeoCoordinates', latitude: venue.lat, longitude: venue.lng } }
               : {}),
-            ...(venue.website ? { sameAs: [venue.website] } : {}),
+            ...(website ? { sameAs: [website] } : {}),
           }}
         />
       ) : null}

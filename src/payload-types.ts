@@ -190,6 +190,7 @@ export interface Event {
     submittedAt?: string | null;
     imageRightsConfirmed?: boolean | null;
     notes?: string | null;
+    ipHash?: string | null;
   };
   /**
    * Leave empty to use the event name, city and date.
@@ -231,6 +232,12 @@ export interface Media {
    */
   alt?: string | null;
   credit?: string | null;
+  /**
+   * Added with an event from the public form. Hidden from visitors; cleared automatically when that event is published.
+   */
+  pending?: boolean | null;
+  prefix?: string | null;
+  _objectKey?: string | null;
   updatedAt: string;
   createdAt: string;
   url?: string | null;
@@ -337,6 +344,10 @@ export interface Venue {
    * Made-up record used to show the design. Shown with a "Sample" label on the site.
    */
   isSample?: boolean | null;
+  /**
+   * Added with an event from the public form. Hidden from visitors; cleared automatically when that event is published.
+   */
+  pending?: boolean | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -366,6 +377,10 @@ export interface Organiser {
    * Made-up record used to show the design. Shown with a "Sample" label on the site.
    */
   isSample?: boolean | null;
+  /**
+   * Added with an event from the public form. Hidden from visitors; cleared automatically when that event is published.
+   */
+  pending?: boolean | null;
   contactName?: string | null;
   email?: string | null;
   phone?: string | null;
@@ -530,6 +545,7 @@ export interface EventsSelect<T extends boolean = true> {
         submittedAt?: T;
         imageRightsConfirmed?: T;
         notes?: T;
+        ipHash?: T;
       };
   metaTitle?: T;
   metaDescription?: T;
@@ -560,6 +576,7 @@ export interface VenuesSelect<T extends boolean = true> {
   lng?: T;
   website?: T;
   isSample?: T;
+  pending?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -576,6 +593,7 @@ export interface OrganisersSelect<T extends boolean = true> {
   instagram?: T;
   verified?: T;
   isSample?: T;
+  pending?: T;
   contactName?: T;
   email?: T;
   phone?: T;
@@ -589,6 +607,9 @@ export interface OrganisersSelect<T extends boolean = true> {
 export interface MediaSelect<T extends boolean = true> {
   alt?: T;
   credit?: T;
+  pending?: T;
+  prefix?: T;
+  _objectKey?: T;
   updatedAt?: T;
   createdAt?: T;
   url?: T;

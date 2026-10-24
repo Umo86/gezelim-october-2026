@@ -38,9 +38,11 @@
     -webkit-font-smoothing: antialiased;
   }
 
+  /* Dark ring with a light halo: visible on the light pages and on the çini blue alike. */
   :focus-visible {
-    outline: 3px solid var(--color-mercan);
+    outline: 3px solid var(--color-gece);
     outline-offset: 2px;
+    box-shadow: 0 0 0 2px var(--color-ayran);
     border-radius: 2px;
   }
 
@@ -70,6 +72,15 @@
     line-height: 0.94;
     letter-spacing: -0.012em;
     text-wrap: balance;
+    /* Long city names ("Peterborough'daki") must wrap rather than run off a phone screen. */
+    overflow-wrap: break-word;
+  }
+
+  /* Pill-shaped radio and checkbox labels whose input is visually hidden. */
+  .pill-option:has(:focus-visible) {
+    outline: 3px solid var(--color-gece);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 2px var(--color-ayran);
   }
 
   /* Labels and small UI text: semi-condensed so they sit tight. */

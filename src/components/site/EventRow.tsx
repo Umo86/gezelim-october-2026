@@ -1,5 +1,5 @@
 import { HoverLink as Link } from './HoverLink'
-import type { Lang } from '@/i18n/config'
+import { otherLang, type Lang } from '@/i18n/config'
 import { getDictionary } from '@/i18n/dictionary'
 import { formatShortRange, formatTimeRange } from '@/lib/dates'
 import type { ListEvent } from '@/lib/events'
@@ -37,7 +37,7 @@ export function EventRow({ event, lang, showCity = false, showCategory = true }:
             <span className="rounded-full bg-tas px-2 py-px text-[0.72rem] text-gece">{t.card.sample}</span>
           ) : null}
         </p>
-        <h3 className="display mt-1 text-[1.4rem] text-gece sm:text-[1.6rem]">
+        <h3 lang={event.translated ? undefined : otherLang(lang)} className="display mt-1 text-[1.4rem] text-gece sm:text-[1.6rem]">
           <Link
             href={event.href}
             className="after:absolute after:inset-0 after:content-[''] group-hover:underline focus-visible:underline"

@@ -5,6 +5,7 @@ import { EventCard } from '@/components/site/EventCard'
 import { EventArt } from '@/components/site/EventArt'
 import { ExternalIcon, VerifiedIcon } from '@/components/site/icons'
 import { JsonLd } from '@/components/site/JsonLd'
+import { RefreshIfStale } from '@/components/site/RefreshIfStale'
 import { getPlace } from '@/config/places'
 import { isLang, type Lang } from '@/i18n/config'
 import { getDictionary } from '@/i18n/dictionary'
@@ -13,7 +14,7 @@ import { toImage, toListEvent } from '@/lib/events'
 import { has, pick, truncate } from '@/lib/localize'
 import { getOrganiser } from '@/lib/queries'
 import { pageMetadata } from '@/lib/seo'
-import { absoluteUrl } from '@/lib/site'
+import { absoluteUrl, instagramUrl, webUrl } from '@/lib/site'
 
 export const dynamic = 'force-static'
 export const revalidate = 3600
@@ -33,14 +34,11 @@ async function load(params: Params) {
   return { ...data, lang: lang as Lang }
 }
 
-function instagramUrl(handle: string): string {
-  if (/^https?:\/\//.test(handle)) return handle
-  return `https://www.instagram.com/${handle.replace(/^@/, '')}/`
-}
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { organiser, upcoming, lang } = await load(params)
-  const bio = pick<string>(organiser.bio, lang)
+  // Only a bio written in this language; the other language's would mislabel the page.
+  const bio = has(organiser.bio, lang) ? pick<string>(organiser.bio, lang) : undefined
   const description =
     truncate(bio || '', 160) ||
     (lang === 'tr'
@@ -48,7 +46,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
       : `Turkish events by ${organiser.name}: upcoming dates, venues and tickets.`)
   return pageMetadata({
     lang,
-    title: organiser.name,
+    title: lang === 'tr' ? `${organiser.name} etkinlikleri` : `${organiser.name} events`,
     description,
     path: paths.organiser(lang, organiser.slug || ''),
     alternates: { tr: paths.organiser('tr', organiser.slug || ''), en: paths.organiser('en', organiser.slug || '') },
@@ -62,9 +60,15 @@ export default async function OrganiserPage({ params }: { params: Params }) {
   const bio = pick<string>(organiser.bio, lang)
   const logo = toImage(organiser.logo as never, lang, organiser.name)
   const events = upcoming.map((e) => toListEvent(e, lang))
+  const website = webUrl(organiser.website)
+  const instagram = organiser.instagram ? instagramUrl(organiser.instagram) : null
+  // Rendered once per cache period; the browser compares this with its own clock.
+  // eslint-disable-next-line react-hooks/purity
+  const builtAt = Date.now()
 
   return (
     <div className="wrap pt-8 md:pt-12">
+      <RefreshIfStale builtAt={builtAt} />
       <Breadcrumbs
         label={t.nav.breadcrumb}
         items={[
@@ -95,14 +99,14 @@ export default async function OrganiserPage({ params }: { params: Params }) {
             </p>
           ) : null}
           <div className="mt-4 flex flex-wrap gap-4">
-            {organiser.website ? (
-              <a href={organiser.website} target="_blank" rel="noopener noreferrer" className="ui inline-flex items-center gap-1.5 text-cini hover:underline">
+            {website ? (
+              <a href={website} target="_blank" rel="noopener noreferrer" className="ui inline-flex items-center gap-1.5 text-cini hover:underline">
                 {t.organiser.website}
                 <ExternalIcon width={16} height={16} />
               </a>
             ) : null}
-            {organiser.instagram ? (
-              <a href={instagramUrl(organiser.instagram)} target="_blank" rel="noopener noreferrer" className="ui inline-flex items-center gap-1.5 text-cini hover:underline">
+            {instagram ? (
+              <a href={instagram} target="_blank" rel="noopener noreferrer" className="ui inline-flex items-center gap-1.5 text-cini hover:underline">
                 {t.organiser.instagram}
                 <ExternalIcon width={16} height={16} />
               </a>
@@ -134,9 +138,7 @@ export default async function OrganiserPage({ params }: { params: Params }) {
             '@type': 'Organization',
             name: organiser.name,
             url: absoluteUrl(paths.organiser(lang, organiser.slug || '')),
-            ...(organiser.website || organiser.instagram
-              ? { sameAs: [organiser.website, organiser.instagram && instagramUrl(organiser.instagram)].filter(Boolean) }
-              : {}),
+            ...(website || instagram ? { sameAs: [website, instagram].filter(Boolean) } : {}),
           }}
         />
       ) : null}

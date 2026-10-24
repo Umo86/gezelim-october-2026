@@ -44,7 +44,7 @@ export const CITIES: Place[] = [
   { slug: 'bristol', kind: 'city', name: { tr: 'Bristol', en: 'Bristol' }, inTr: "Bristol'da", inEn: 'in Bristol', nation: 'england', lat: 51.4545, lng: -2.5879, major: true },
   { slug: 'cardiff', kind: 'city', name: { tr: 'Cardiff', en: 'Cardiff' }, inTr: "Cardiff'te", inEn: 'in Cardiff', nation: 'wales', lat: 51.4816, lng: -3.1791, major: true },
   { slug: 'leicester', kind: 'city', name: { tr: 'Leicester', en: 'Leicester' }, inTr: "Leicester'da", inEn: 'in Leicester', nation: 'england', lat: 52.6369, lng: -1.1398 },
-  { slug: 'sheffield', kind: 'city', name: { tr: 'Sheffield', en: 'Sheffield' }, inTr: "Sheffield'da", inEn: 'in Sheffield', nation: 'england', lat: 53.3811, lng: -1.4701 },
+  { slug: 'sheffield', kind: 'city', name: { tr: 'Sheffield', en: 'Sheffield' }, inTr: "Sheffield'de", inEn: 'in Sheffield', nation: 'england', lat: 53.3811, lng: -1.4701 },
   { slug: 'nottingham', kind: 'city', name: { tr: 'Nottingham', en: 'Nottingham' }, inTr: "Nottingham'da", inEn: 'in Nottingham', nation: 'england', lat: 52.9548, lng: -1.1581 },
   { slug: 'coventry', kind: 'city', name: { tr: 'Coventry', en: 'Coventry' }, inTr: "Coventry'de", inEn: 'in Coventry', nation: 'england', lat: 52.4068, lng: -1.5197 },
   { slug: 'luton', kind: 'city', name: { tr: 'Luton', en: 'Luton' }, inTr: "Luton'da", inEn: 'in Luton', nation: 'england', lat: 51.8787, lng: -0.42 },

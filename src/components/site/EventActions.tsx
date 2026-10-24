@@ -74,14 +74,21 @@ function endOf(e: CalendarEvent): string {
 export function CalendarMenu({ event, lang }: { event: CalendarEvent; lang: Lang }) {
   const t = getDictionary(lang).event
   const [open, setOpen] = useState(false)
+  // Opens towards whichever side has room, so it never runs off a phone screen.
+  const [alignRight, setAlignRight] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     if (!open) return
     const close = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
     }
-    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
+    const esc = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      setOpen(false)
+      buttonRef.current?.focus()
+    }
     document.addEventListener('mousedown', close)
     document.addEventListener('keydown', esc)
     return () => {
@@ -125,18 +132,33 @@ export function CalendarMenu({ event, lang }: { event: CalendarEvent; lang: Lang
     document.body.appendChild(a)
     a.click()
     a.remove()
-    URL.revokeObjectURL(href)
+    // Safari reads the file after click() returns: free it a minute later, not straight away.
+    window.setTimeout(() => URL.revokeObjectURL(href), 60_000)
     setOpen(false)
   }
 
   return (
     <div ref={ref} className="relative">
-      <button type="button" className={button} aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+      <button
+        ref={buttonRef}
+        type="button"
+        className={button}
+        aria-expanded={open}
+        onClick={() => {
+          const rect = buttonRef.current?.getBoundingClientRect()
+          setAlignRight(Boolean(rect && rect.left + 256 > window.innerWidth - 16))
+          setOpen((o) => !o)
+        }}
+      >
         <CalendarIcon />
         {t.addToCalendar}
       </button>
       {open ? (
-        <div className="absolute left-0 top-full z-20 mt-2 w-64 rounded-[8px] bg-white p-2 shadow-[0_18px_40px_-12px_rgba(15,26,51,0.35)] ring-1 ring-gece/10">
+        <div
+          className={`absolute top-full z-20 mt-2 w-64 rounded-[8px] bg-white p-2 shadow-[0_18px_40px_-12px_rgba(15,26,51,0.35)] ring-1 ring-gece/10 ${
+            alignRight ? 'right-0' : 'left-0'
+          }`}
+        >
           <a
             href={google}
             target="_blank"

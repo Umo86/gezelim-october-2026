@@ -7,6 +7,7 @@ import { isLang, type Lang } from '@/i18n/config'
 import { getDictionary } from '@/i18n/dictionary'
 import { getWhenBySlug, paths, WHEN_SLUGS, type When } from '@/i18n/paths'
 import { formatShortRange, overlaps, whenRange } from '@/lib/dates'
+import { subListIsIndexable } from '@/lib/indexing'
 import { categoryHeading, upcomingFor, whenHeading } from '@/lib/route'
 import { pageMetadata } from '@/lib/seo'
 
@@ -55,8 +56,9 @@ async function eventsFor(r: Resolved) {
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const r = await resolve(params)
-  const { events } = await eventsFor(r)
+  const { events, all } = await eventsFor(r)
   const { place, lang } = r
+  const noindex = !subListIsIndexable(events, all)
   if (r.kind === 'when') {
     const heading = whenHeading(place, lang, r.when)
     const range = whenRange(r.when)
@@ -70,7 +72,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
           : `${heading} (${dates}): concerts, stand-up, parties and family events, with times, venues and tickets.`,
       path: paths.when(place.slug, lang, r.when),
       alternates: { tr: paths.when(place.slug, 'tr', r.when), en: paths.when(place.slug, 'en', r.when) },
-      noindex: events.length === 0,
+      noindex,
     })
   }
   const heading = categoryHeading(place, lang, r.category.phrase)
@@ -83,7 +85,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
         : `${heading}: an up-to-date list with dates, venues and tickets.`,
     path: paths.category(place.slug, lang, r.category),
     alternates: { tr: paths.category(place.slug, 'tr', r.category), en: paths.category(place.slug, 'en', r.category) },
-    noindex: events.length === 0,
+    noindex,
   })
 }
 

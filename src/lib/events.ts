@@ -77,6 +77,7 @@ export type RawEvent = {
   metaDescription?: L<string>
   performers?: Array<{ name: string; kind?: 'person' | 'group' | null }> | null
   previousSlugs?: string[] | null
+  createdAt?: string
   updatedAt?: string
   _status?: 'draft' | 'published' | null
 }

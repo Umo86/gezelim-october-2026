@@ -34,12 +34,15 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const e = toListEvent(raw, lang)
   const city = getCity(raw.city)
   const tile = dateTile(e.startsAt, lang)
-  const title = pick<string>(raw.metaTitle, lang) || `${e.title}, ${city?.name[lang] ?? raw.city} ${tile.day} ${tile.month}`
+  // Only text written in this language: pick() would fall back to the other one, and a
+  // Turkish <title> on an English page confuses search engines.
+  const own = <T,>(value: unknown) => (has(value, lang) ? pick<T>(value, lang) : undefined)
+  const title = own<string>(raw.metaTitle) || `${e.title}, ${city?.name[lang] ?? raw.city} ${tile.day} ${tile.month}`
   const description =
-    pick<string>(raw.metaDescription, lang) ||
+    own<string>(raw.metaDescription) ||
     truncate(
-      e.summary ||
-        lexicalPlainText(pick(raw.description, lang)) ||
+      own<string>(raw.summary) ||
+        lexicalPlainText(own(raw.description)) ||
         `${formatDateFull(e.startsAt, lang)}, ${e.venueName ?? e.cityName}.`,
       160,
     )
@@ -56,9 +59,10 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
       ...(has(raw.title, 'tr') ? { tr: paths.event(raw.city, 'tr', e.slug) } : {}),
       ...(has(raw.title, 'en') ? { en: paths.event(raw.city, 'en', e.slug) } : {}),
     },
-    // An untranslated page points search engines at the language it was written in.
+    // An untranslated page points search engines at the language it was written in
+    // (a canonical alone; adding noindex as well sends mixed signals).
     canonical: !translatedHere && translatedThere ? paths.event(raw.city, otherLang(lang), e.slug) : undefined,
-    noindex: e.isSample || ended || (!translatedHere && translatedThere),
+    noindex: e.isSample || ended,
     // A photo's 1200×630 crop, or the generated poster card when there's no photo.
     image: image?.og ?? shareImagePath(raw, lang),
     type: 'article',

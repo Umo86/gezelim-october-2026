@@ -51,7 +51,9 @@ export async function BeforeDashboard({ payload, i18n }: ServerProps) {
               : 'No events waiting for review'}
         </div>
         <div style={{ marginTop: 4, opacity: 0.85 }}>
-          {isTr ? `Sitede ${upcoming} yaklaşan etkinlik yayında.` : `${upcoming} upcoming events are live on the site.`}
+          {isTr
+            ? `Sitede ${upcoming} yaklaşan etkinlik yayında.`
+            : `${upcoming} upcoming ${upcoming === 1 ? 'event is' : 'events are'} live on the site.`}
         </div>
       </div>
       {pending > 0 ? (

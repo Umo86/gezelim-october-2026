@@ -7,7 +7,9 @@
  *   npm run samples      the build step (part of npm run ci), driven by SAMPLE_EVENTS:
  *                        "on" fills an EMPTY database with the samples, "off" removes them.
  *                        Unset, it means "on" before launch (no NEXT_PUBLIC_SITE_URL) and
- *                        nothing after. It never fails the build.
+ *                        "off" after, so the samples disappear with the first launch build.
+ *                        It also creates the first admin from SEED_ADMIN_* when set.
+ *                        It never fails the build.
  * Optional: SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD create a first admin if none exists.
  */
 import config from '@payload-config'
@@ -184,8 +186,10 @@ const photoStorage = Boolean(
 )
 
 async function fromEnv(payload: Payload) {
-  // Before launch an empty database gets the samples, so a first deployment has something to show.
-  const mode = process.env.SAMPLE_EVENTS || (process.env.NEXT_PUBLIC_SITE_URL ? '' : 'on')
+  await ensureAdmin(payload)
+  // Before launch an empty database gets the samples, so a first deployment has something
+  // to show; the launch build (site address set) takes them away again.
+  const mode = process.env.SAMPLE_EVENTS || (process.env.NEXT_PUBLIC_SITE_URL ? 'off' : 'on')
   if (mode === 'off') return clearSamples(payload)
   if (mode !== 'on') return
   const { totalDocs } = await payload.count({ collection: 'events', overrideAccess: true })

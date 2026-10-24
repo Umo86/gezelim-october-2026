@@ -45,6 +45,10 @@ export function pageMetadata(args: Args): Metadata {
       images: [{ url: ogImage, width: 1200, height: 630, alt: title }],
     },
     twitter: { card: 'summary_large_image', title, description, images: [ogImage] },
-    robots: noindex || !isProductionSite() ? { index: false, follow: true } : undefined,
+    robots:
+      noindex || !isProductionSite()
+        ? { index: false, follow: true }
+        : // Lets Google show posters large in results and Discover.
+          { index: true, follow: true, 'max-image-preview': 'large' },
   }
 }

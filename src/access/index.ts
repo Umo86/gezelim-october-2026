@@ -21,3 +21,12 @@ export const publishedOrStaff: Access = ({ req }) => {
 export const staffOnlyField: FieldAccess = ({ req }) => Boolean(userOf(req))
 
 export const adminOnlyField: FieldAccess = ({ req }) => userOf(req)?.role === 'admin'
+
+/**
+ * Organisers, venues and images that arrived with a public submission stay hidden
+ * from visitors (and the public API) until staff publish the event they came with.
+ */
+export const approvedOrStaff: Access = ({ req }) => {
+  if (userOf(req)) return true
+  return { pending: { not_equals: true } }
+}

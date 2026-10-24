@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { EventsListing } from '@/components/site/EventsListing'
 import { getDictionary } from '@/i18n/dictionary'
 import { paths } from '@/i18n/paths'
+import { placeIsIndexable } from '@/lib/indexing'
 import { placeHeading, resolveRoute, upcomingFor, type RouteParams } from '@/lib/route'
 import { pageMetadata } from '@/lib/seo'
 
@@ -26,7 +27,7 @@ export async function generateMetadata({ params }: { params: RouteParams }): Pro
     description,
     path: paths.events(place.slug, lang),
     alternates: { tr: paths.events(place.slug, 'tr'), en: paths.events(place.slug, 'en') },
-    noindex: events.length === 0,
+    noindex: !placeIsIndexable(events),
   })
 }
 

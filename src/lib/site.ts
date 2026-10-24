@@ -37,3 +37,20 @@ export const SOCIAL = {
   instagram: process.env.NEXT_PUBLIC_INSTAGRAM_URL || '',
   whatsappChannel: process.env.NEXT_PUBLIC_WHATSAPP_CHANNEL_URL || '',
 }
+
+/** The address if it's a plain http(s) link, otherwise null (never javascript:, data: and the like). */
+export function webUrl(value?: string | null): string | null {
+  if (!value) return null
+  try {
+    const url = new URL(value.trim())
+    return url.protocol === 'https:' || url.protocol === 'http:' ? url.toString() : null
+  } catch {
+    return null
+  }
+}
+
+/** "@name", "name" or an instagram.com link, as a link to the profile; anything else is ignored. */
+export function instagramUrl(value: string): string | null {
+  const handle = value.trim().match(/^(?:https?:\/\/(?:www\.)?instagram\.com\/)?@?([A-Za-z0-9._]{1,30})\/?(?:[?#].*)?$/)?.[1]
+  return handle ? `https://www.instagram.com/${handle}/` : null
+}

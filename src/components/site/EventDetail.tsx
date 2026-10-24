@@ -2,19 +2,20 @@ import { RichText, type JSXConvertersFunction } from '@payloadcms/richtext-lexic
 import { HoverLink as Link } from './HoverLink'
 import { getCategory } from '@/config/categories'
 import { getCity } from '@/config/places'
-import type { Lang } from '@/i18n/config'
+import { otherLang, type Lang } from '@/i18n/config'
 import { getDictionary } from '@/i18n/dictionary'
 import { paths } from '@/i18n/paths'
 import { formatDateFull, formatShortRange, formatTimeRange, londonTime, toLondonISO } from '@/lib/dates'
 import { shareImagePath, toImage, toListEvent, type ListEvent, type RawEvent, type RawOrganiser, type RawVenue } from '@/lib/events'
 import { has, lexicalPlainText, pick, truncate } from '@/lib/localize'
-import { absoluteUrl, CONTACT_EMAIL } from '@/lib/site'
+import { absoluteUrl, CONTACT_EMAIL, webUrl } from '@/lib/site'
 import { Breadcrumbs } from './Breadcrumbs'
 import { EventArt } from './EventArt'
 import { EventCard } from './EventCard'
 import { CalendarMenu, ShareButtons } from './EventActions'
 import { ExternalIcon, PinIcon, VerifiedIcon } from './icons'
 import { JsonLd } from './JsonLd'
+import { RefreshIfStale } from './RefreshIfStale'
 
 const STATUS_URL: Record<string, string> = {
   scheduled: 'https://schema.org/EventScheduled',
@@ -24,16 +25,27 @@ const STATUS_URL: Record<string, string> = {
 }
 
 /** Images inside descriptions load from /img like every other photo. */
-const converters: JSXConvertersFunction = ({ defaultConverters }) => ({
+type UploadValue = {
+  filename?: string
+  alt?: unknown
+  width?: number
+  height?: number
+  sizes?: { poster?: { filename?: string; width?: number; height?: number } }
+}
+
+const converters = (lang: Lang): JSXConvertersFunction => ({ defaultConverters }) => ({
   ...defaultConverters,
   upload: ({ node }) => {
-    const value = (node as { value?: { filename?: string; alt?: string; width?: number; height?: number } }).value
+    const value = (node as { value?: UploadValue }).value
     if (!value || typeof value !== 'object' || !value.filename) return null
-    const size = (value as { sizes?: { poster?: { filename?: string } } }).sizes?.poster?.filename ?? value.filename
+    const poster = value.sizes?.poster?.filename ? value.sizes.poster : null
     return (
       <img
-        src={`/img/${encodeURIComponent(size)}`}
-        alt={value.alt ?? ''}
+        src={`/img/${encodeURIComponent(poster?.filename ?? value.filename)}`}
+        // Alt text is stored per language; events are loaded with both.
+        alt={pick<string>(value.alt as never, lang) || ''}
+        width={poster?.width ?? value.width}
+        height={poster?.height ?? value.height}
         loading="lazy"
         decoding="async"
         className="h-auto max-w-full rounded-[6px]"
@@ -72,9 +84,16 @@ export function EventDetail({ raw, lang, more, preview = false }: Props) {
   const description = pick<{ root: unknown }>(raw.description, lang)
   const descriptionText = description ? lexicalPlainText(description) : ''
   const translated = has(raw.title, lang)
+  // Text missing in this language falls back to the other one: tell screen readers and
+  // hyphenation which language they're reading.
+  const fallbackLang = otherLang(lang)
+  const titleLang = translated ? undefined : fallbackLang
+  const summaryLang = has(raw.summary, lang) ? undefined : fallbackLang
+  const descriptionLang = has(raw.description, lang) ? undefined : fallbackLang
   // Server component, rendered once per cache period: reading the clock here is intended.
   // eslint-disable-next-line react-hooks/purity
-  const ended = Date.parse(e.activeUntil) < Date.now()
+  const builtAt = Date.now()
+  const ended = Date.parse(e.activeUntil) < builtAt
   const image = toImage(raw.image, lang, e.title)
   const url = absoluteUrl(e.href)
   const multiDay = e.dayStart !== e.dayEnd
@@ -100,7 +119,10 @@ export function EventDetail({ raw, lang, more, preview = false }: Props) {
           '@context': 'https://schema.org',
           '@type': category?.schemaType ?? 'Event',
           name: e.title,
-          description: truncate(e.summary || descriptionText || e.title, 300),
+          description: truncate(
+            (summaryLang ? '' : e.summary) || (descriptionLang ? '' : descriptionText) || e.summary || descriptionText || e.title,
+            300,
+          ),
           url,
           startDate: toLondonISO(e.startsAt),
           ...(e.endsAt ? { endDate: toLondonISO(e.endsAt) } : {}),
@@ -111,8 +133,10 @@ export function EventDetail({ raw, lang, more, preview = false }: Props) {
             name: venue?.name ?? cityName,
             address: {
               '@type': 'PostalAddress',
-              ...(venue?.address ? { streetAddress: venue.address } : {}),
-              addressLocality: venue?.town || city?.name.en || cityName,
+              ...(venue?.address || venue?.town
+                ? { streetAddress: [venue?.address, venue?.town].filter(Boolean).join(', ') }
+                : {}),
+              addressLocality: city?.name.en || cityName,
               ...(venue?.postcode ? { postalCode: venue.postcode } : {}),
               addressCountry: 'GB',
             },
@@ -128,7 +152,7 @@ export function EventDetail({ raw, lang, more, preview = false }: Props) {
                 organizer: {
                   '@type': 'Organization',
                   name: organiser.name,
-                  url: organiser.website || absoluteUrl(paths.organiser(lang, organiser.slug || '')),
+                  url: webUrl(organiser.website) || absoluteUrl(paths.organiser(lang, organiser.slug || '')),
                 },
               }
             : {}),
@@ -137,9 +161,14 @@ export function EventDetail({ raw, lang, more, preview = false }: Props) {
                 offers: {
                   '@type': 'Offer',
                   url: raw.ticketUrl || url,
-                  price: e.isFree ? 0 : (raw.priceFrom ?? 0),
-                  priceCurrency: 'GBP',
+                  // Only a price the page also shows; "from £12" is the lowest ticket price.
+                  ...(e.isFree
+                    ? { price: 0, priceCurrency: 'GBP' }
+                    : raw.priceFrom != null
+                      ? { price: raw.priceFrom, priceCurrency: 'GBP' }
+                      : {}),
                   availability: e.soldOut ? 'https://schema.org/SoldOut' : 'https://schema.org/InStock',
+                  ...(raw.createdAt ? { validFrom: toLondonISO(raw.createdAt) } : {}),
                 },
               }
             : {}),
@@ -164,6 +193,7 @@ export function EventDetail({ raw, lang, more, preview = false }: Props) {
 
   return (
     <article className="pb-24 md:pb-0">
+      <RefreshIfStale builtAt={builtAt} />
       <div className="wrap pt-6 md:pt-10">
         <Breadcrumbs items={crumbs} label={t.nav.breadcrumb} />
 
@@ -202,8 +232,14 @@ export function EventDetail({ raw, lang, more, preview = false }: Props) {
                 {category.name[lang]}
               </Link>
             ) : null}
-            <h1 className="display mt-2 text-[2.9rem] sm:text-[3.6rem] lg:text-[4.6rem]">{e.title}</h1>
-            {e.summary ? <p className="mt-4 max-w-[52ch] text-[1.2rem] leading-snug text-muted">{e.summary}</p> : null}
+            <h1 lang={titleLang} className="display mt-2 text-[2.9rem] sm:text-[3.6rem] lg:text-[4.6rem]">
+              {e.title}
+            </h1>
+            {e.summary ? (
+              <p lang={summaryLang} className="mt-4 max-w-[52ch] text-[1.2rem] leading-snug text-muted">
+                {e.summary}
+              </p>
+            ) : null}
 
             <dl className="mt-8 divide-y divide-gece/10 border-y-2 border-gece">
               {performers.length ? (
@@ -298,6 +334,7 @@ export function EventDetail({ raw, lang, more, preview = false }: Props) {
                   href={raw.ticketUrl as string}
                   target="_blank"
                   rel="noopener noreferrer nofollow"
+                  data-until={e.activeUntil}
                   className="ui inline-flex items-center gap-2 rounded-full bg-cini px-6 py-3 text-[1.05rem] text-ayran hover:bg-cini-deep"
                 >
                   {ticketLabel}
@@ -305,6 +342,7 @@ export function EventDetail({ raw, lang, more, preview = false }: Props) {
                 </a>
               ) : null}
               {!ended ? (
+                <div data-until={e.activeUntil} className="contents">
                 <CalendarMenu
                   lang={lang}
                   event={{
@@ -316,10 +354,15 @@ export function EventDetail({ raw, lang, more, preview = false }: Props) {
                     url,
                   }}
                 />
+                </div>
               ) : null}
               <ShareButtons url={url} title={e.title} lang={lang} />
             </div>
-            {showTickets ? <p className="mt-3 text-[0.9rem] text-muted">{t.event.ticketsInfo}</p> : null}
+            {showTickets ? (
+              <p data-until={e.activeUntil} className="mt-3 text-[0.9rem] text-muted">
+                {t.event.ticketsInfo}
+              </p>
+            ) : null}
           </div>
         </div>
 
@@ -329,8 +372,8 @@ export function EventDetail({ raw, lang, more, preview = false }: Props) {
               <h2 id="about-event" className="display text-[2rem] md:text-[2.6rem]">
                 {t.event.about}
               </h2>
-              <div className="prose-gz mt-4">
-                <RichText data={description as never} converters={converters} disableContainer />
+              <div className="prose-gz mt-4" lang={descriptionLang}>
+                <RichText data={description as never} converters={converters(lang)} disableContainer />
               </div>
               <p className="mt-8 text-[0.95rem] text-muted">
                 {t.event.reportMistake}{' '}
@@ -360,7 +403,10 @@ export function EventDetail({ raw, lang, more, preview = false }: Props) {
       ) : null}
 
       {showTickets ? (
-        <div className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-between gap-3 border-t border-gece/15 bg-ayran/95 px-4 py-3 backdrop-blur-sm md:hidden">
+        <div
+          data-until={e.activeUntil}
+          className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-between gap-3 border-t border-gece/15 bg-ayran/95 px-4 py-3 backdrop-blur-sm md:hidden"
+        >
           <div className="min-w-0">
             <p className="ui truncate text-[0.95rem]">{e.title}</p>
             <p className="ui text-[0.85rem] text-muted">{e.price}</p>

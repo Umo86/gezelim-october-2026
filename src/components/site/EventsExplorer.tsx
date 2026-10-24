@@ -232,11 +232,11 @@ function ExplorerView({
       ) : (
         <div>
           {groups.map(([day, list]) => (
-            <section key={day} className="grid gap-x-8 border-b border-gece/15 md:grid-cols-[13rem_1fr]" aria-label={dayLabel(day)}>
+            <section key={day} data-group className="grid gap-x-8 border-b border-gece/15 md:grid-cols-[13rem_1fr]" aria-label={dayLabel(day)}>
               <h2 className="ui sticky top-16 z-10 bg-ayran pb-1 pt-4 text-[1rem] md:static md:bg-transparent md:pt-6">{dayLabel(day)}</h2>
               <ul className="divide-y divide-gece/10">
                 {list.map((e) => (
-                  <li key={e.id}>
+                  <li key={e.id} data-item>
                     <EventRow event={e} lang={lang} showCity={showCity} showCategory={showCategory} />
                   </li>
                 ))}

@@ -1,5 +1,5 @@
 import { HoverLink as Link } from './HoverLink'
-import type { Lang } from '@/i18n/config'
+import { otherLang, type Lang } from '@/i18n/config'
 import { getDictionary } from '@/i18n/dictionary'
 import { dateTile, formatShortRange, formatTimeRange, formatWeekdayShort } from '@/lib/dates'
 import type { ListEvent } from '@/lib/events'
@@ -40,7 +40,7 @@ export function EventCard({ event, lang, priority, showCity = false }: Props) {
         </div>
       </div>
       <p className="ui mt-3 text-[0.9rem] text-cini">{when}</p>
-      <h3 className="display mt-1 text-[1.55rem] text-gece">
+      <h3 lang={event.translated ? undefined : otherLang(lang)} className="display mt-1 text-[1.55rem] text-gece">
         <Link
           href={event.href}
           className="after:absolute after:inset-0 after:content-[''] group-hover:underline focus-visible:underline"

@@ -1,7 +1,8 @@
 import { createHash } from 'crypto'
 import path from 'path'
 import type { CollectionBeforeOperationHook, CollectionConfig } from 'payload'
-import { anyone, isStaff } from '@/access'
+import { approvedOrStaff, isStaff } from '@/access'
+import { pendingField } from '@/fields/options'
 import { revalidateAfterChange, revalidateAfterDelete } from '@/hooks/revalidate'
 import { slugify } from '@/lib/slugify'
 
@@ -33,7 +34,7 @@ export const Media: CollectionConfig = {
     defaultColumns: ['filename', 'alt', 'updatedAt'],
   },
   access: {
-    read: anyone,
+    read: approvedOrStaff,
     create: isStaff,
     update: isStaff,
     delete: isStaff,
@@ -86,5 +87,6 @@ export const Media: CollectionConfig = {
       type: 'text',
       label: { tr: 'Görsel kaynağı', en: 'Credit' },
     },
+    pendingField,
   ],
 }

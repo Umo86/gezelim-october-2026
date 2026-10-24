@@ -7,12 +7,14 @@ import { EventVisual } from '@/components/site/EventVisual'
 import { Frieze } from '@/components/site/Frieze'
 import { JsonLd } from '@/components/site/JsonLd'
 import { OrganiserCta } from '@/components/site/OrganiserCta'
+import { RefreshIfStale } from '@/components/site/RefreshIfStale'
 import { CATEGORIES } from '@/config/categories'
 import { CITIES } from '@/config/places'
 import { getDictionary } from '@/i18n/dictionary'
 import { paths } from '@/i18n/paths'
 import { formatDayLong, formatShortRange, londonDayKey, overlaps, whenRange } from '@/lib/dates'
 import type { ListEvent } from '@/lib/events'
+import { placeIsIndexable } from '@/lib/indexing'
 import { placeHeading, resolveRoute, upcomingFor, type RouteParams } from '@/lib/route'
 import { pageMetadata } from '@/lib/seo'
 import { absoluteUrl } from '@/lib/site'
@@ -42,7 +44,7 @@ export async function generateMetadata({ params }: { params: RouteParams }): Pro
     description,
     path: paths.home(place.slug, lang),
     alternates: { tr: paths.home(place.slug, 'tr'), en: paths.home(place.slug, 'en') },
-    noindex: place.kind === 'city' && events.length === 0,
+    noindex: place.kind === 'city' && !placeIsIndexable(events),
   })
 }
 
@@ -108,6 +110,7 @@ export default async function PlaceHome({ params }: { params: RouteParams }) {
 
   return (
     <>
+      <RefreshIfStale builtAt={now.getTime()} />
       <section className="bg-cini text-ayran">
         <div className="wrap grid items-center gap-10 pb-10 pt-8 md:pb-20 md:pt-16 lg:grid-cols-[minmax(0,1fr)_26rem] xl:grid-cols-[minmax(0,1fr)_30rem]">
           <div>
@@ -149,7 +152,7 @@ export default async function PlaceHome({ params }: { params: RouteParams }) {
                   style={{ left: POSTER_SPOTS[i].left, top: POSTER_SPOTS[i].top, rotate: POSTER_SPOTS[i].rotate, zIndex: POSTER_SPOTS[i].z }}
                 >
                   <div className="relative aspect-[4/5] overflow-hidden rounded-[6px] shadow-[0_28px_50px_-18px_rgba(5,10,30,0.65)]">
-                    <EventVisual event={e} variant="card" sizes="256px" />
+                    <EventVisual event={e} variant="card" sizes="256px" instance="hero" />
                   </div>
                 </Link>
               ))}
@@ -179,7 +182,7 @@ export default async function PlaceHome({ params }: { params: RouteParams }) {
               />
             </div>
             {weekendEvents.length ? (
-              <div className="rail mt-6">
+              <div className="rail mt-6" data-group>
                 {weekendEvents.map((e, i) => (
                   <EventCard key={e.id} event={e} lang={lang} priority={i < 2} showCity={isUk} />
                 ))}
@@ -194,7 +197,7 @@ export default async function PlaceHome({ params }: { params: RouteParams }) {
               <div id="featured">
                 <SectionHead title={t.home.featured} />
               </div>
-              <div className="rail mt-6">
+              <div className="rail mt-6" data-group>
                 {featured.map((e) => (
                   <EventCard key={e.id} event={e} lang={lang} showCity={isUk} />
                 ))}
@@ -254,7 +257,7 @@ export default async function PlaceHome({ params }: { params: RouteParams }) {
               </div>
               <div className="mt-2">
                 {[...groups.entries()].map(([day, list]) => (
-                  <div key={day} className="grid gap-x-8 border-b border-gece/15 py-2 md:grid-cols-[13rem_1fr]">
+                  <div key={day} data-group className="grid gap-x-8 border-b border-gece/15 py-2 md:grid-cols-[13rem_1fr]">
                     <h3 className="ui pt-4 text-[1rem] text-gece md:pt-6">
                       {day === today ? t.list.today : formatDayLong(day, lang)}
                     </h3>
@@ -290,14 +293,14 @@ export default async function PlaceHome({ params }: { params: RouteParams }) {
                 '@type': 'Organization',
                 '@id': absoluteUrl('/#organization'),
                 name: 'Gezelim',
-                url: absoluteUrl(paths.home('uk', lang)),
+                url: absoluteUrl('/'),
                 logo: absoluteUrl('/brand/icon-512.png'),
               },
               {
                 '@type': 'WebSite',
                 '@id': absoluteUrl('/#website'),
                 name: 'Gezelim',
-                url: absoluteUrl(paths.home('uk', lang)),
+                url: absoluteUrl('/'),
                 inLanguage: lang,
                 publisher: { '@id': absoluteUrl('/#organization') },
               },

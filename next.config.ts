@@ -18,6 +18,9 @@ const nextConfig: NextConfig = {
   // Photos are resized once at upload (Payload + sharp) and served from /img, so
   // next/image's on-request optimisation isn't used anywhere.
   images: { unoptimized: true },
+  // A cached page older than two hours is rebuilt before it's served (not served stale
+  // once more), so dated pages like "this weekend" never reach visitors or crawlers days old.
+  expireTime: 7200,
   // The share-image route reads these from disk at runtime, so make sure Vercel bundles them.
   outputFileTracingIncludes: {
     '/og/**/*': ['./src/assets/fonts/**/*', './public/brand/wordmark.svg'],

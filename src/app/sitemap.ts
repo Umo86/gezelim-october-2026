@@ -7,15 +7,19 @@ import { eventDayRange, overlaps, whenRange } from '@/lib/dates'
 import { toImage, type RawEvent, type RawOrganiser, type RawVenue } from '@/lib/events'
 import { has } from '@/lib/localize'
 import { getSitemapEntries, getUpcomingEvents } from '@/lib/queries'
+import { subListIsIndexable } from '@/lib/indexing'
 import { absoluteUrl } from '@/lib/site'
 
 /*
  * One sitemap for Google, Bing and the rest: every live page in both languages,
  * each entry listing its translation (hreflang) and, for events, the poster image.
- * Sample events, empty pages and untranslated copies are left out.
+ * Sample events, thin or empty pages and untranslated copies are left out, by the
+ * same rules the pages use for their noindex tags (src/lib/route.ts).
  */
 
-export const revalidate = 3600
+// Built on request from the cached queries (cleared whenever content is published), so
+// it's always current and never needs the database at build time.
+export const dynamic = 'force-dynamic'
 
 type Entry = MetadataRoute.Sitemap[number]
 
@@ -38,6 +42,7 @@ const SITEMAP_WHENS: When[] = ['weekend', 'week', 'next-week']
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const entries: Entry[] = [
+    ...pair((l) => paths.home('uk', l), { changeFrequency: 'daily', priority: 1 }),
     ...pair((l) => paths.addEvent(l), { changeFrequency: 'monthly', priority: 0.4 }),
     ...pair((l) => paths.about(l), { changeFrequency: 'monthly', priority: 0.3 }),
   ]
@@ -48,20 +53,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     const places = [{ slug: 'uk', events: upcoming }, ...CITIES.map((c) => ({ slug: c.slug, events: upcoming.filter((e) => e.city === c.slug) }))]
     for (const place of places) {
-      if (place.slug !== 'uk' && place.events.length === 0) continue
+      if (place.events.length === 0) continue
       const lastModified = latest(place.events)
-      entries.push(...pair((l) => paths.home(place.slug, l), { lastModified, changeFrequency: 'daily', priority: place.slug === 'uk' ? 1 : 0.8 }))
+      if (place.slug !== 'uk') {
+        entries.push(...pair((l) => paths.home(place.slug, l), { lastModified, changeFrequency: 'daily', priority: 0.8 }))
+      }
       entries.push(...pair((l) => paths.events(place.slug, l), { lastModified, changeFrequency: 'daily', priority: 0.8 }))
       for (const when of SITEMAP_WHENS) {
         const range = whenRange(when, now)
         const inRange = place.events.filter((e) => overlaps(eventDayRange(e.startsAt, e.endsAt), range))
-        if (inRange.length) {
+        if (subListIsIndexable(inRange, place.events)) {
           entries.push(...pair((l) => paths.when(place.slug, l, when), { lastModified: latest(inRange), changeFrequency: 'daily', priority: 0.7 }))
         }
       }
       for (const category of CATEGORIES) {
         const inCategory = place.events.filter((e) => e.category === category.value)
-        if (inCategory.length) {
+        if (subListIsIndexable(inCategory, place.events)) {
           entries.push(
             ...pair((l) => paths.category(place.slug, l, category), {
               lastModified: latest(inCategory),
@@ -110,9 +117,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       )
     }
   } catch {
-    // Database unreachable (e.g. a build without one): ship the static part,
-    // with the home pages so the sitemap is never empty.
-    entries.push(...pair((l) => paths.home('uk', l)), ...pair((l) => paths.events('uk', l)))
+    // Database unreachable: ship the static part rather than an error.
   }
 
   return entries

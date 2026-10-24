@@ -3,16 +3,76 @@
 import { HoverLink as Link } from './HoverLink'
 import Script from 'next/script'
 import { useSearchParams } from 'next/navigation'
-import { Suspense, useEffect, useId, useRef, useState, useTransition, type ReactNode } from 'react'
+import { Suspense, useEffect, useId, useRef, useState, useSyncExternalStore, useTransition, type ReactNode } from 'react'
 import { CATEGORIES } from '@/config/categories'
 import { citiesForPicker, getCity } from '@/config/places'
 import type { Lang } from '@/i18n/config'
 import { getDictionary } from '@/i18n/dictionary'
 import { paths } from '@/i18n/paths'
+import { londonDayKey } from '@/lib/dates'
 import { submitEvent, type SubmitResult } from '@/app/(frontend)/[place]/[lang]/add-event/actions'
 import { CheckIcon } from './icons'
 
 const MAX_EDGE = 2000
+// Matches the server's limit (add-event/actions.ts).
+const MAX_IMAGE = 3.5 * 1024 * 1024
+
+type Turnstile = {
+  render: (element: HTMLElement, options: Record<string, unknown>) => string
+  reset: (id: string) => void
+  remove: (id: string) => void
+}
+declare global {
+  interface Window {
+    turnstile?: Turnstile
+  }
+}
+
+/** Today in London, read in the browser only (the page itself is built ahead of time). */
+const noSubscribe = () => () => {}
+function useLondonToday(): string | undefined {
+  return useSyncExternalStore(noSubscribe, () => londonDayKey(Date.now()), () => undefined)
+}
+
+/**
+ * Cloudflare Turnstile, drawn explicitly so it works on every visit (not just when the
+ * script first loads) and can be reset after a failed send: each token works once.
+ */
+function TurnstileWidget({ siteKey, lang, resetKey }: { siteKey: string; lang: Lang; resetKey: number }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const widget = useRef<string | null>(null)
+  const [ready, setReady] = useState(false)
+
+  useEffect(() => {
+    if (!ready || !ref.current || !window.turnstile) return
+    const id = window.turnstile.render(ref.current, {
+      sitekey: siteKey,
+      language: lang,
+      // The normal widget is 300px wide; the narrowest phones need the compact one.
+      size: window.innerWidth < 360 ? 'compact' : 'normal',
+    })
+    widget.current = id
+    return () => {
+      window.turnstile?.remove(id)
+      widget.current = null
+    }
+  }, [ready, siteKey, lang])
+
+  useEffect(() => {
+    if (resetKey && widget.current) window.turnstile?.reset(widget.current)
+  }, [resetKey])
+
+  return (
+    <>
+      <Script
+        src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
+        strategy="afterInteractive"
+        onReady={() => setReady(true)}
+      />
+      <div ref={ref} />
+    </>
+  )
+}
 
 /** Shrinks big photos in the browser before upload: faster for phones, and under hosting limits. */
 async function resizeImage(file: File): Promise<Blob> {
@@ -60,7 +120,7 @@ function Field({ name, label, required, help, error, children, requiredLabel }: 
       <label htmlFor={id} className="field-label">
         {label}
         {required ? (
-          <span className="text-mercan" aria-hidden="true">
+          <span className="text-[#b42318]" aria-hidden="true">
             {' '}
             *
           </span>
@@ -87,7 +147,14 @@ function Field({ name, label, required, help, error, children, requiredLabel }: 
   )
 }
 
-export function SubmitEventForm({ lang, turnstileSiteKey }: { lang: Lang; turnstileSiteKey?: string }) {
+type FormProps = {
+  lang: Lang
+  turnstileSiteKey?: string
+  /** False while photo storage isn't set up: the poster section is left out. */
+  uploadsEnabled?: boolean
+}
+
+export function SubmitEventForm({ lang, turnstileSiteKey, uploadsEnabled = true }: FormProps) {
   const t = getDictionary(lang).form
   const formRef = useRef<HTMLFormElement>(null)
   const [result, setResult] = useState<SubmitResult | null>(null)
@@ -97,13 +164,15 @@ export function SubmitEventForm({ lang, turnstileSiteKey }: { lang: Lang; turnst
   const [isFree, setIsFree] = useState(false)
   const [image, setImage] = useState<{ blob: Blob; name: string; preview: string } | null>(null)
   const [imageError, setImageError] = useState<string | null>(null)
-  // When the form appeared; very fast submissions are bots.
+  // When the form appeared (browser clock only): very fast submissions are bots.
   const startedAt = useRef(0)
   const [summaryLength, setSummaryLength] = useState(0)
+  const [turnstileReset, setTurnstileReset] = useState(0)
   const summaryId = useId()
+  const fileInput = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    startedAt.current = Date.now()
+    startedAt.current = performance.now()
   }, [])
   useEffect(() => () => {
     if (image) URL.revokeObjectURL(image.preview)
@@ -111,8 +180,10 @@ export function SubmitEventForm({ lang, turnstileSiteKey }: { lang: Lang; turnst
 
   const errors = result && !result.ok ? result.errors : {}
   const cities = citiesForPicker(lang)
-  const otherName = writtenIn === 'tr' ? 'English' : 'Türkçe'
-  const today = new Date().toISOString().slice(0, 10)
+  // The other language's name, in the language of the page.
+  const otherName =
+    lang === 'tr' ? (writtenIn === 'tr' ? 'İngilizce' : 'Türkçe') : writtenIn === 'tr' ? 'English' : 'Turkish'
+  const today = useLondonToday()
 
   const onFile = async (file: File | undefined) => {
     setImageError(null)
@@ -122,7 +193,7 @@ export function SubmitEventForm({ lang, turnstileSiteKey }: { lang: Lang; turnst
       return setImageError(t.errors.imageType)
     }
     const blob = await resizeImage(file)
-    if (blob.size > 4 * 1024 * 1024) {
+    if (blob.size > MAX_IMAGE) {
       setImage(null)
       return setImageError(t.errors.imageSize)
     }
@@ -134,12 +205,15 @@ export function SubmitEventForm({ lang, turnstileSiteKey }: { lang: Lang; turnst
     const form = event.currentTarget
     const data = new FormData(form)
     data.delete('imageFile')
-    data.set('startedAt', String(startedAt.current))
+    data.set('elapsed', String(Math.round(performance.now() - startedAt.current)))
     if (image) data.set('image', new File([image.blob], image.name, { type: image.blob.type || 'image/jpeg' }))
     startTransition(async () => {
       try {
         const res = await submitEvent(data)
         setResult(res)
+        // Field errors are checked before the security token, so it stays valid for the
+        // corrected form; any other failure may have used it up.
+        if (!res.ok && Object.keys(res.errors).length === 0) setTurnstileReset((n) => n + 1)
         if (res.ok) {
           window.scrollTo({ top: 0, behavior: 'smooth' })
         } else {
@@ -150,6 +224,7 @@ export function SubmitEventForm({ lang, turnstileSiteKey }: { lang: Lang; turnst
         }
       } catch {
         setResult({ ok: false, errors: {}, message: t.errors.server })
+        setTurnstileReset((n) => n + 1)
       }
     })
   }
@@ -166,7 +241,8 @@ export function SubmitEventForm({ lang, turnstileSiteKey }: { lang: Lang; turnst
             onClick={() => {
               setResult(null)
               setImage(null)
-              startedAt.current = Date.now()
+              setSummaryLength(0)
+              startedAt.current = performance.now()
             }}
             className="ui rounded-full bg-gece px-5 py-2.5 text-ayran"
           >
@@ -214,7 +290,7 @@ export function SubmitEventForm({ lang, turnstileSiteKey }: { lang: Lang; turnst
               {(['tr', 'en'] as const).map((l) => (
                 <label
                   key={l}
-                  className={`ui cursor-pointer rounded-full border-[1.5px] px-4 py-2 ${
+                  className={`pill-option ui cursor-pointer rounded-full border-[1.5px] px-4 py-2 ${
                     writtenIn === l ? 'border-gece bg-gece text-ayran' : 'border-gece/25 bg-white'
                   }`}
                 >
@@ -405,38 +481,64 @@ export function SubmitEventForm({ lang, turnstileSiteKey }: { lang: Lang; turnst
         </div>
       </section>
 
-      <section className={section}>
-        <h2 className={sectionTitle}>4. {t.sections.image}</h2>
-        <div className="grid gap-4">
-          <Field name="imageFile" label={t.image} help={t.imageHelp} error={imageError ?? errors.image} requiredLabel={t.required}>
-            {(a) => (
-              <input
-                {...a}
-                name="imageFile"
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={(e) => onFile(e.target.files?.[0])}
-                className="block w-full text-[0.95rem] file:mr-4 file:rounded-full file:border-0 file:bg-gece file:px-4 file:py-2 file:font-semibold file:text-ayran"
-              />
-            )}
-          </Field>
-          {image ? (
-            <div className="flex items-start gap-4">
-              <img src={image.preview} alt="" className="h-40 w-32 rounded-[6px] object-cover" />
-              <div className="space-y-3">
-                <label className="flex cursor-pointer items-start gap-3">
-                  <input type="checkbox" name="imageRights" className="mt-1 h-5 w-5 accent-cini" aria-invalid={errors.imageRights ? true : undefined} />
-                  <span>{t.imageRights}</span>
-                </label>
-                {errors.imageRights ? <span className="field-error">{errors.imageRights}</span> : null}
+      {uploadsEnabled ? (
+        <section className={section}>
+          <h2 className={sectionTitle}>4. {t.sections.image}</h2>
+          <div className="grid gap-4">
+            <Field name="imageFile" label={t.image} help={t.imageHelp} error={imageError ?? errors.image} requiredLabel={t.required}>
+              {(a) => (
+                <input
+                  {...a}
+                  ref={fileInput}
+                  name="imageFile"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={(e) => onFile(e.target.files?.[0])}
+                  className="block w-full text-[0.95rem] file:mr-4 file:rounded-full file:border-0 file:bg-gece file:px-4 file:py-2 file:font-semibold file:text-ayran"
+                />
+              )}
+            </Field>
+            {image ? (
+              <div className="flex items-start gap-4">
+                <img src={image.preview} alt="" className="h-40 w-32 rounded-[6px] object-cover" />
+                <div className="space-y-3">
+                  <label className="flex cursor-pointer items-start gap-3">
+                    <input
+                      type="checkbox"
+                      name="imageRights"
+                      className="mt-1 h-5 w-5 shrink-0 accent-cini"
+                      aria-invalid={errors.imageRights ? true : undefined}
+                      aria-describedby={errors.imageRights ? 'f-imageRights-error' : undefined}
+                    />
+                    <span>{t.imageRights}</span>
+                  </label>
+                  {errors.imageRights ? (
+                    <span id="f-imageRights-error" className="field-error">
+                      {errors.imageRights}
+                    </span>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setImage(null)
+                      setImageError(null)
+                      if (fileInput.current) fileInput.current.value = ''
+                    }}
+                    className="ui text-[0.95rem] text-cini underline underline-offset-4"
+                  >
+                    {t.imageRemove}
+                  </button>
+                </div>
               </div>
-            </div>
-          ) : null}
-        </div>
-      </section>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
 
       <section className={section}>
-        <h2 className={sectionTitle}>5. {t.sections.contact}</h2>
+        <h2 className={sectionTitle}>
+          {uploadsEnabled ? 5 : 4}. {t.sections.contact}
+        </h2>
         <div className="grid gap-5">
           <div className="grid gap-5 sm:grid-cols-2">
             <Field name="organiserName" label={t.organiserName} help={t.organiserHelp} required error={errors.organiserName} requiredLabel={t.required}>
@@ -483,12 +585,7 @@ export function SubmitEventForm({ lang, turnstileSiteKey }: { lang: Lang; turnst
             {t.privacyNote}
           </Link>
         </p>
-        {turnstileSiteKey ? (
-          <>
-            <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer />
-            <div className="cf-turnstile" data-sitekey={turnstileSiteKey} data-language={lang} />
-          </>
-        ) : null}
+        {turnstileSiteKey ? <TurnstileWidget siteKey={turnstileSiteKey} lang={lang} resetKey={turnstileReset} /> : null}
         <button
           type="submit"
           disabled={pending}

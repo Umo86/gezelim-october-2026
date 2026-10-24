@@ -10,12 +10,16 @@ import { Wordmark } from './Wordmark'
 export function Header({ place, lang }: { place: string; lang: Lang }) {
   const t = getDictionary(lang)
   return (
-    <header className="sticky top-0 z-40 border-b border-gece/10 bg-ayran/95 backdrop-blur-sm">
-      <div className="wrap flex h-16 items-center gap-3 sm:gap-5">
+    // Solid background on purpose: a backdrop-filter here would trap the mobile menu's
+    // fixed panel inside the 64px header.
+    <header className="sticky top-0 z-40 border-b border-gece/10 bg-ayran">
+      <div className="wrap flex h-16 items-center gap-2.5 sm:gap-5">
         <Link href={paths.home(place, lang)} aria-label={t.site.homeLink} className="shrink-0 py-2">
-          <Wordmark className="h-[1.75rem] w-auto text-gece sm:h-[2rem]" title="Gezelim" />
+          <Wordmark className="h-[1.6rem] w-auto text-gece xs:h-[1.75rem] sm:h-[2rem]" title="Gezelim" />
         </Link>
-        <CityPicker lang={lang} current={place} />
+        <div className="min-w-0">
+          <CityPicker lang={lang} current={place} />
+        </div>
         <nav aria-label={t.nav.menu} className="ml-auto hidden items-center gap-6 md:flex">
           <Link href={paths.events(place, lang)} className="ui text-[0.95rem] text-gece hover:underline">
             {t.nav.events}
@@ -31,7 +35,7 @@ export function Header({ place, lang }: { place: string; lang: Lang }) {
             {t.nav.addEvent}
           </Link>
         </nav>
-        <MobileMenu lang={lang} place={place} className="ml-auto md:hidden" />
+        <MobileMenu lang={lang} place={place} className="ml-auto shrink-0 md:hidden" />
       </div>
     </header>
   )

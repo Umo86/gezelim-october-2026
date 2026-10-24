@@ -8,10 +8,12 @@ type Props = {
   sizes?: string
   priority?: boolean
   className?: string
+  /** Distinguishes a second drawing of the same poster on one page (e.g. the home hero). */
+  instance?: string
 }
 
 /** The event's photo, or its generated çini poster when there is no photo. */
-export function EventVisual({ event, variant, sizes, priority = false, className = '' }: Props) {
+export function EventVisual({ event, variant, sizes, priority = false, className = '', instance }: Props) {
   const { image } = event
   if (image?.card) {
     const srcSet = [image.thumb && `${image.thumb} 320w`, image.card && `${image.card} 640w`].filter(Boolean).join(', ')
@@ -36,6 +38,7 @@ export function EventVisual({ event, variant, sizes, priority = false, className
       motif={event.motif}
       title={variant === 'card' ? event.title : undefined}
       scale={variant === 'thumb' ? 2.2 : 1}
+      instance={instance}
       className={`absolute inset-0 ${className}`}
     />
   )

@@ -27,13 +27,16 @@ export const ageOptions: Option[] = [
 ]
 
 /** A slug field that fills itself from another field when left empty. */
-export function slugField(sourceField: string, opts: { unique?: boolean } = {}): Field {
+export function slugField(sourceField: string, opts: { unique?: boolean; fallback?: string } = {}): Field {
+  // Names with no Latin letters or digits ("★★★", Arabic, emoji) slugify to nothing;
+  // an empty slug would collide with the next one on the unique index.
+  const fallback = opts.fallback ?? 'kayit'
   const formatSlug: FieldHook = ({ value, data, originalDoc, operation }) => {
-    if (typeof value === 'string' && value.trim()) return slugify(value)
+    if (typeof value === 'string' && value.trim()) return slugify(value) || fallback
     if (operation === 'update' && originalDoc?.slug) return originalDoc.slug
     const source = data?.[sourceField] ?? originalDoc?.[sourceField]
     const text = typeof source === 'string' ? source : (source?.tr ?? source?.en ?? '')
-    return text ? slugify(String(text)) : value
+    return text ? slugify(String(text)) || fallback : value
   }
   return {
     name: 'slug',
@@ -62,6 +65,22 @@ export const isSampleField: Field = {
     description: {
       tr: 'Tasarımı göstermek için eklenen sahte kayıt. Sitede "Örnek" etiketiyle görünür.',
       en: 'Made-up record used to show the design. Shown with a "Sample" label on the site.',
+    },
+  },
+}
+
+/** See approvedOrStaff in src/access. Set by the public form, cleared when the event is published. */
+export const pendingField: Field = {
+  name: 'pending',
+  type: 'checkbox',
+  defaultValue: false,
+  index: true,
+  label: { tr: 'Onay bekliyor', en: 'Waiting for review' },
+  admin: {
+    position: 'sidebar',
+    description: {
+      tr: 'Formla gelen bir etkinlikle eklendi. Ziyaretçiler göremez; etkinlik yayınlanınca bu işaret kendiliğinden kalkar.',
+      en: 'Added with an event from the public form. Hidden from visitors; cleared automatically when that event is published.',
     },
   },
 }

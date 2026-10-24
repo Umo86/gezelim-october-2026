@@ -21,6 +21,7 @@ export function CityPicker({ lang, current }: { lang: Lang; current: string }) {
       return value ? pathname : null
     })
   const rootRef = useRef<HTMLDivElement>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
   const panelId = useId()
   const t = getDictionary(lang).picker
   const place = getPlace(current) ?? UK
@@ -29,7 +30,9 @@ export function CityPicker({ lang, current }: { lang: Lang; current: string }) {
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpenOn(null)
+      if (e.key !== 'Escape') return
+      setOpenOn(null)
+      buttonRef.current?.focus()
     }
     const onPointer = (e: MouseEvent) => {
       if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpenOn(null)
@@ -62,18 +65,19 @@ export function CityPicker({ lang, current }: { lang: Lang; current: string }) {
   }
 
   return (
-    <div ref={rootRef} className="relative">
+    <div ref={rootRef} className="relative min-w-0">
       <button
+        ref={buttonRef}
         type="button"
         aria-expanded={open}
         aria-controls={panelId}
         aria-label={`${t.choose}: ${place.name[lang]}`}
         onClick={() => setOpen((o) => !o)}
-        className="ui flex items-center gap-1.5 rounded-full border border-gece/20 bg-white/60 py-1.5 pl-2.5 pr-2 text-[0.95rem] text-gece hover:border-gece/50"
+        className="ui flex max-w-full items-center gap-1.5 rounded-full border border-gece/20 bg-white/60 py-1.5 pl-2.5 pr-2 text-[0.95rem] text-gece hover:border-gece/50"
       >
-        <PinIcon width={16} height={16} className="text-cini" />
-        <span className="max-w-[9.5rem] truncate">{label}</span>
-        <ChevronDownIcon width={16} height={16} className={open ? 'rotate-180' : ''} />
+        <PinIcon width={16} height={16} className="shrink-0 text-cini" />
+        <span className="min-w-0 max-w-[9.5rem] truncate">{label}</span>
+        <ChevronDownIcon width={16} height={16} className={`shrink-0 ${open ? 'rotate-180' : ''}`} />
       </button>
       {open ? (
         <div

@@ -4,6 +4,7 @@ import type {
   CollectionBeforeChangeHook,
   CollectionConfig,
   Validate,
+  PayloadRequest,
 } from 'payload'
 import { isStaff, publishedOrStaff, staffOnlyField } from '@/access'
 import { ageOptions, categoryOptions, cityOptions, isSampleField, spokenOptions } from '@/fields/options'
@@ -54,8 +55,32 @@ const computeActiveUntil: CollectionBeforeChangeHook = ({ data, originalDoc }) =
  * pages and tell search engines which addresses changed. Saving a draft of a
  * live event changes nothing public, so it's ignored.
  */
+type Ref = number | { id: number } | null | undefined
+const refId = (value: Ref) => (value && typeof value === 'object' ? value.id : value)
+
+/** A published event makes the organiser, venue and image it came with public too. */
+async function releasePending(req: PayloadRequest, doc: { organiser?: Ref; venue?: Ref; image?: Ref }) {
+  const targets = [
+    ['organisers', refId(doc.organiser)],
+    ['venues', refId(doc.venue)],
+    ['media', refId(doc.image)],
+  ] as const
+  for (const [collection, id] of targets) {
+    if (!id) continue
+    await req.payload.update({
+      collection,
+      where: { and: [{ id: { equals: id } }, { pending: { equals: true } }] },
+      data: { pending: false },
+      overrideAccess: true,
+      req,
+      context: { disableRevalidate: true },
+    })
+  }
+}
+
 const afterEventChange: CollectionAfterChangeHook = async ({ doc, previousDoc, context, req }) => {
   if (context?.disableRevalidate) return doc
+  if (doc?._status === 'published') await releasePending(req, doc)
   const isPublished = doc?._status === 'published'
   const wasPublished = previousDoc?._status === 'published'
   if (!isPublished && !wasPublished) return doc
@@ -374,6 +399,8 @@ export const Events: CollectionConfig = {
                   ],
                 },
                 { name: 'notes', type: 'textarea', label: { tr: 'Ekip notları', en: 'Team notes' } },
+                // A one-way hash of the sender's IP address, only for limiting repeat submissions.
+                { name: 'ipHash', type: 'text', index: true, admin: { hidden: true } },
               ],
             },
           ],

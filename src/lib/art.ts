@@ -90,17 +90,23 @@ export type ArtOptions = {
   scale?: number
   width?: number
   height?: number
+  /**
+   * Keeps the pattern id unique when the same poster appears twice on a page.
+   * Chrome won't paint a pattern whose first definition sits in a hidden element
+   * (the desktop-only hero), so each placement needs its own.
+   */
+  instance?: string
 }
 
 /** Colours and the SVG markup of the tile pattern (4:5 unless width/height say otherwise). */
-export function artSvg({ seed, motif, scheme, scale = 1, width = 400, height = 500 }: ArtOptions): {
+export function artSvg({ seed, motif, scheme, scale = 1, width = 400, height = 500, instance = 'a' }: ArtOptions): {
   svg: string
   scheme: Scheme
 } {
   const h = hashString(seed)
   const index = scheme ?? h % SCHEMES.length
   const s = SCHEMES[index]
-  const id = `gz-${motif}-${index}-${(h % 9973).toString(36)}-${String(scale).replace('.', '_')}`
+  const id = `gz-${instance}-${motif}-${index}-${h.toString(36)}-${String(scale).replace('.', '_')}`
   const shift = (h >> 4) % 80
   const rotate = motif === 'kilim' || motif === 'star' ? ((h >> 9) % 2) * 45 : 0
   const svg =

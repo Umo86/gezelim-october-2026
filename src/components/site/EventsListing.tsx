@@ -8,6 +8,7 @@ import { Breadcrumbs, type Crumb } from './Breadcrumbs'
 import { CategoryNav, CityLinks } from './CategoryNav'
 import { EventsExplorer } from './EventsExplorer'
 import { OrganiserCta } from './OrganiserCta'
+import { RefreshIfStale } from './RefreshIfStale'
 
 type Props = {
   place: Place
@@ -36,8 +37,13 @@ export function EventsListing({ place, lang, title, subtitle, crumbs, events, al
         ...WHEN_VALUES.map((w) => [w, paths.when(place.slug, lang, w)]),
       ]) as Record<When | 'all', string>)
 
+  // Rendered once per cache period; the browser compares this with its own clock.
+  // eslint-disable-next-line react-hooks/purity
+  const builtAt = Date.now()
+
   return (
     <>
+      <RefreshIfStale builtAt={builtAt} />
       <div className="wrap pt-8 md:pt-12">
         <Breadcrumbs label={t.nav.breadcrumb} items={crumbs} />
         <h1 className="display mt-4 max-w-[18ch] text-[2.9rem] md:text-[5.2rem]">{title}</h1>

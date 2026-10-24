@@ -36,7 +36,7 @@ const COPY = {
         h: 'Siteyi gezerken',
         p: [
           'Dil tercihini hatırlamak için tarayıcına küçük bir çerez (gz_lang) kaydederiz. Reklam ya da takip çerezi kullanmıyoruz.',
-          'Form gönderimlerinde spam’i önlemek için Cloudflare Turnstile kullanabiliriz.',
+          'Form gönderimlerinde spam’i önlemek için Cloudflare Turnstile kullanabiliriz. Aynı yerden art arda gelen gönderimleri sınırlamak için IP adresinin geri çevrilemeyen bir özetini (hash) etkinlik kaydıyla birlikte saklarız; IP adresinin kendisini saklamayız.',
         ],
       },
       {
@@ -72,7 +72,7 @@ const COPY = {
         h: 'When you browse',
         p: [
           'We save one small cookie (gz_lang) to remember your language. We don’t use advertising or tracking cookies.',
-          'We may use Cloudflare Turnstile on forms to stop spam.',
+          'We may use Cloudflare Turnstile on forms to stop spam. To limit repeated submissions from one place, we keep a one-way hash of your IP address with the event record; we don’t store the address itself.',
         ],
       },
       {

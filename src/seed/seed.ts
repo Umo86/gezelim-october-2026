@@ -5,8 +5,9 @@
  *   npm run seed -- no-images   skip the sample photos (all events get generated posters),
  *                        e.g. for a preview whose photo storage isn't set up yet
  *   npm run samples      the build step (part of npm run ci), driven by SAMPLE_EVENTS:
- *                        "on" fills an EMPTY database with the samples, "off" removes them,
- *                        anything else does nothing. It never fails the build.
+ *                        "on" fills an EMPTY database with the samples, "off" removes them.
+ *                        Unset, it means "on" before launch (no NEXT_PUBLIC_SITE_URL) and
+ *                        nothing after. It never fails the build.
  * Optional: SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD create a first admin if none exists.
  */
 import config from '@payload-config'
@@ -183,7 +184,8 @@ const photoStorage = Boolean(
 )
 
 async function fromEnv(payload: Payload) {
-  const mode = process.env.SAMPLE_EVENTS
+  // Before launch an empty database gets the samples, so a first deployment has something to show.
+  const mode = process.env.SAMPLE_EVENTS || (process.env.NEXT_PUBLIC_SITE_URL ? '' : 'on')
   if (mode === 'off') return clearSamples(payload)
   if (mode !== 'on') return
   const { totalDocs } = await payload.count({ collection: 'events', overrideAccess: true })
@@ -199,8 +201,9 @@ async function fromEnv(payload: Payload) {
 const args = process.argv.slice(2)
 const option = (name: string) => args.includes(name) || args.includes(`--${name}`)
 const buildStep = option('from-env')
-const payload = await getPayload({ config })
+let payload: Payload | undefined
 try {
+  payload = await getPayload({ config })
   if (buildStep) {
     await fromEnv(payload)
   } else if (option('clear')) {
@@ -210,9 +213,10 @@ try {
     await seed(payload, { images: !option('no-images') })
   }
 } catch (err) {
-  payload.logger.error({ err }, 'Seeding failed')
+  if (payload) payload.logger.error({ err }, 'Seeding failed')
+  else console.error('Seeding failed:', err)
   // Sample data is never worth a failed deployment.
   if (!buildStep) process.exitCode = 1
 }
-await payload.destroy?.()
+await payload?.destroy?.()
 process.exit(process.exitCode ?? 0)

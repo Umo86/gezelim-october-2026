@@ -4,6 +4,7 @@ import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import { s3Storage } from '@payloadcms/storage-s3'
 import { en } from '@payloadcms/translations/languages/en'
 import { tr } from '@payloadcms/translations/languages/tr'
+import { createHash } from 'node:crypto'
 import path from 'path'
 import { buildConfig } from 'payload'
 import sharp from 'sharp'
@@ -14,6 +15,18 @@ import { Media } from './collections/Media'
 import { Organisers } from './collections/Organisers'
 import { Users } from './collections/Users'
 import { Venues } from './collections/Venues'
+
+/**
+ * Signs admin sessions. PAYLOAD_SECRET is the proper setting. Without it, the secret
+ * is derived from the database address, which is just as private (whoever holds that
+ * address already has the whole database), so a deployment works with DATABASE_URL alone.
+ */
+function payloadSecret(): string {
+  if (process.env.PAYLOAD_SECRET) return process.env.PAYLOAD_SECRET
+  const database = process.env.DATABASE_URL
+  if (!database) return '' // Payload refuses to start without a secret, which is what we want
+  return createHash('sha256').update(`gezelim/payload-secret/${database}`).digest('hex')
+}
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -63,7 +76,7 @@ export default buildConfig({
     fallbackLanguage: 'en',
   },
   editor: lexicalEditor(),
-  secret: process.env.PAYLOAD_SECRET || '',
+  secret: payloadSecret(),
   typescript: {
     outputFile: path.resolve(dirname, 'payload-types.ts'),
   },

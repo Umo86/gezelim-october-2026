@@ -74,7 +74,8 @@ export function Footer({ lang }: { lang: Lang }) {
               </Link>
             </li>
             <li>
-              <a href={`mailto:${CONTACT_EMAIL}`} className={linkClass}>
+              {/* The address may break anywhere: at tablet width its column is narrower than it. */}
+              <a href={`mailto:${CONTACT_EMAIL}`} className={`${linkClass} [overflow-wrap:anywhere]`}>
                 {CONTACT_EMAIL}
               </a>
             </li>

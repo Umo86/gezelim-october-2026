@@ -17,6 +17,7 @@ import type { ListEvent } from '@/lib/events'
 import { placeIsIndexable } from '@/lib/indexing'
 import { placeHeading, resolveRoute, upcomingFor, type RouteParams } from '@/lib/route'
 import { pageMetadata } from '@/lib/seo'
+import { fitLongestWord } from '@/lib/fit'
 import { absoluteUrl } from '@/lib/site'
 
 export const dynamic = 'force-static'
@@ -113,8 +114,11 @@ export default async function PlaceHome({ params }: { params: RouteParams }) {
       <RefreshIfStale builtAt={now.getTime()} />
       <section className="bg-cini text-ayran">
         <div className="wrap grid items-center gap-10 pb-10 pt-8 md:pb-20 md:pt-16 lg:grid-cols-[minmax(0,1fr)_26rem] xl:grid-cols-[minmax(0,1fr)_30rem]">
-          <div>
-          <h1 className="display max-w-[13ch] text-[3.3rem] xs:text-[3.9rem] sm:text-[5rem] md:text-[6.6rem] lg:text-[6.4rem] xl:text-[7.4rem]">
+          <div className="@container min-w-0">
+          <h1
+            style={fitLongestWord(heading)}
+            className="display max-w-[max(13ch,var(--word))] text-[length:min(3.3rem,var(--fit))] xs:text-[length:min(3.9rem,var(--fit))] sm:text-[length:min(5rem,var(--fit))] md:text-[length:min(6.6rem,var(--fit))] lg:text-[length:min(6.4rem,var(--fit))] xl:text-[length:min(7.4rem,var(--fit))]"
+          >
             {heading}
           </h1>
           <p className="mt-5 max-w-[44ch] text-[1.15rem] text-ayran/90 md:text-[1.3rem]">

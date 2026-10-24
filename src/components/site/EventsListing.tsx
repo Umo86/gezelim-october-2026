@@ -4,6 +4,7 @@ import type { Lang } from '@/i18n/config'
 import { getDictionary } from '@/i18n/dictionary'
 import { paths, WHEN_VALUES, type When } from '@/i18n/paths'
 import type { ListEvent } from '@/lib/events'
+import { fitLongestWord } from '@/lib/fit'
 import { Breadcrumbs, type Crumb } from './Breadcrumbs'
 import { CategoryNav, CityLinks } from './CategoryNav'
 import { EventsExplorer } from './EventsExplorer'
@@ -44,9 +45,14 @@ export function EventsListing({ place, lang, title, subtitle, crumbs, events, al
   return (
     <>
       <RefreshIfStale builtAt={builtAt} />
-      <div className="wrap pt-8 md:pt-12">
+      <div className="wrap @container pt-8 md:pt-12">
         <Breadcrumbs label={t.nav.breadcrumb} items={crumbs} />
-        <h1 className="display mt-4 max-w-[18ch] text-[2.9rem] md:text-[5.2rem]">{title}</h1>
+        <h1
+          style={fitLongestWord(title)}
+          className="display mt-4 max-w-[max(18ch,var(--word))] text-[length:min(2.9rem,var(--fit))] md:text-[length:min(5.2rem,var(--fit))]"
+        >
+          {title}
+        </h1>
         {subtitle ? <p className="ui mt-3 text-[1.15rem] text-muted">{subtitle}</p> : null}
         <CategoryNav place={place} lang={lang} events={allEvents} active={category?.value} />
         {isUk ? (

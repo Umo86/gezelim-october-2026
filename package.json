@@ -15,10 +15,11 @@
     "start": "cross-env NODE_OPTIONS=--no-deprecation next start",
     "test": "cross-env NODE_OPTIONS=--no-deprecation vitest run --config ./vitest.config.mts",
     "seed": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed/seed.ts",
-    "seed:clear": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed/seed.ts --clear",
+    "seed:clear": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed/seed.ts clear",
+    "samples": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed/seed.ts from-env",
     "migrate": "cross-env NODE_OPTIONS=--no-deprecation payload migrate",
     "migrate:create": "cross-env NODE_OPTIONS=--no-deprecation payload migrate:create",
-    "ci": "npm run migrate && npm run build",
+    "ci": "npm run migrate && npm run samples && npm run build",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

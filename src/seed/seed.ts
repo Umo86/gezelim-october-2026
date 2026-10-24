@@ -2,8 +2,11 @@
  * Sample data.
  *   npm run seed         replace all sample records with a fresh set (dates relative to today)
  *   npm run seed:clear   remove every sample record and leave real content alone
- *   npm run seed -- --no-images   skip the sample photos (all events get generated posters),
+ *   npm run seed -- no-images   skip the sample photos (all events get generated posters),
  *                        e.g. for a preview whose photo storage isn't set up yet
+ *   npm run samples      the build step (part of npm run ci), driven by SAMPLE_EVENTS:
+ *                        "on" fills an EMPTY database with the samples, "off" removes them,
+ *                        anything else does nothing. It never fails the build.
  * Optional: SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD create a first admin if none exists.
  */
 import config from '@payload-config'
@@ -50,7 +53,7 @@ function eventDates(e: (typeof events)[number]): { start: Date; end?: Date } | n
   return { start, end: londonLocalToDate(endKey, e.endTime) }
 }
 
-async function seed(payload: Payload) {
+async function seed(payload: Payload, { images }: { images: boolean }) {
   await clearSamples(payload)
 
   const organiserIds = new Map<string, number>()
@@ -85,7 +88,7 @@ async function seed(payload: Payload) {
   }
 
   const posterIds = new Map<string, number>()
-  const posters = process.argv.includes('--no-images') ? [] : (events.map((e) => e.poster).filter(Boolean) as string[])
+  const posters = images ? (events.map((e) => e.poster).filter(Boolean) as string[]) : []
   for (const name of new Set(posters)) {
     try {
       const data = await renderPoster(name)
@@ -175,17 +178,41 @@ async function ensureAdmin(payload: Payload) {
   payload.logger.info(`Created admin user ${email}`)
 }
 
+const photoStorage = Boolean(
+  process.env.R2_BUCKET && process.env.R2_ACCOUNT_ID && process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY,
+)
+
+async function fromEnv(payload: Payload) {
+  const mode = process.env.SAMPLE_EVENTS
+  if (mode === 'off') return clearSamples(payload)
+  if (mode !== 'on') return
+  const { totalDocs } = await payload.count({ collection: 'events', overrideAccess: true })
+  if (totalDocs > 0) {
+    payload.logger.info('SAMPLE_EVENTS=on, but the database already has events, so it is left alone')
+    return
+  }
+  // On Vercel, uploads need R2: without it the samples use generated posters only.
+  await seed(payload, { images: photoStorage || !process.env.VERCEL })
+}
+
+// `payload run` passes on plain words only (it swallows --flags), so the options are words.
+const args = process.argv.slice(2)
+const option = (name: string) => args.includes(name) || args.includes(`--${name}`)
+const buildStep = option('from-env')
 const payload = await getPayload({ config })
 try {
-  if (process.argv.includes('--clear')) {
+  if (buildStep) {
+    await fromEnv(payload)
+  } else if (option('clear')) {
     await clearSamples(payload)
   } else {
     await ensureAdmin(payload)
-    await seed(payload)
+    await seed(payload, { images: !option('no-images') })
   }
 } catch (err) {
   payload.logger.error({ err }, 'Seeding failed')
-  process.exitCode = 1
+  // Sample data is never worth a failed deployment.
+  if (!buildStep) process.exitCode = 1
 }
 await payload.destroy?.()
 process.exit(process.exitCode ?? 0)

@@ -93,7 +93,7 @@ Adding a city or category means editing `src/config/places.ts` or `src/config/ca
 5. **Domain and launch:** add `gezelim.co` to the project, redirect `gezelim.co.uk` to it, then set `NEXT_PUBLIC_SITE_URL=https://gezelim.co` for Production and redeploy. Until that variable is set, every deployment (including `*.vercel.app`) tells search engines to stay away, so the temporary address never competes with the real one.
 6. **Search:** set `INDEXNOW_KEY` and the verification tags, then submit the sitemap in Google Search Console and Bing Webmaster Tools.
 
-To fill a fresh database with the sample events: `npm run seed` (or `npm run seed -- --no-images` before photo storage is set up). `npm run seed:clear` removes them again.
+To fill a fresh database with the sample events: `npm run seed` (or `npm run seed -- no-images` before photo storage is set up). `npm run seed:clear` removes them again. On Vercel, set `SAMPLE_EVENTS=on` and the build fills an empty database with them; `SAMPLE_EVENTS=off` removes them on the next deployment.
 
 Admin photo uploads go through a Vercel function, so files over about 4 MB need resizing first; the public form already resizes in the browser.
 
